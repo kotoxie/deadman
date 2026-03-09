@@ -51,8 +51,7 @@ async function main() {
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'"],
-        // Only upgrade insecure requests when HTTPS is available
-        ...(config.secureCookies ? { upgradeInsecureRequests: [] } : {}),
+        upgradeInsecureRequests: config.secureCookies ? [] : null,
       },
     },
     // Disable HSTS when not using HTTPS to prevent browsers from force-upgrading to https://
