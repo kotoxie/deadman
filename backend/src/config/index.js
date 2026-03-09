@@ -26,6 +26,9 @@ const config = Object.freeze({
   port: parseInt(process.env.PORT || '6680', 10),
   nodeEnv,
   isDev,
+  secureCookies: process.env.SECURE_COOKIES !== undefined
+    ? process.env.SECURE_COOKIES === 'true'
+    : !isDev,
   dataDir: path.resolve(process.env.DATA_DIR || path.join(__dirname, '../../data')),
   masterPassword: process.env.MASTER_PASSWORD || 'admin',
   sessionSecret: process.env.SESSION_SECRET || 'dev-session-fallback',

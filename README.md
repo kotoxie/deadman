@@ -41,6 +41,8 @@ services:
       - MASTER_PASSWORD=change-me-to-something-strong
       - SESSION_SECRET=generate-a-random-64-char-string
       - DB_ENCRYPTION_KEY=generate-another-random-64-char-string
+      # Set to false if accessing over plain HTTP (no HTTPS)
+      # - SECURE_COOKIES=false
 ```
 
 ```bash

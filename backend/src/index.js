@@ -51,8 +51,12 @@ async function main() {
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'"],
+        // Only upgrade insecure requests when HTTPS is available
+        ...(config.secureCookies ? { upgradeInsecureRequests: [] } : {}),
       },
     },
+    // Disable HSTS when not using HTTPS to prevent browsers from force-upgrading to https://
+    strictTransportSecurity: config.secureCookies ? undefined : false,
   }));
   app.use(cors({ origin: config.isDev ? true : false, credentials: true }));
 
@@ -68,7 +72,7 @@ async function main() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: !config.isDev,   // Secure cookies in production (requires HTTPS)
+      secure: config.secureCookies,  // Requires HTTPS; override with SECURE_COOKIES=false for plain HTTP
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       sameSite: 'strict',      // Strict CSRF protection (upgraded from 'lax')
     },
