@@ -63,8 +63,8 @@ async function checkWarnings() {
       if (hoursRemaining <= threshold && !WarningLog.wasWarningSent(threshold)) {
         logger.info(`Sending warning: ${threshold}h before deadline`);
 
-        // Send warning via configured methods
-        const userEmail = Setting.get('smtp_from') || Setting.get('smtp_user');
+        // Send warning to admin only (not recipients)
+        const userEmail = Setting.get('admin_notify_email');
         if (emailConfigured() && userEmail) {
           try {
             await sendWarningEmail(userEmail, Math.round(hoursRemaining));
@@ -75,7 +75,7 @@ async function checkWarnings() {
           }
         }
 
-        const userTelegramId = Setting.get('user_telegram_chat_id');
+        const userTelegramId = Setting.get('admin_notify_telegram_chat_id');
         if (telegramConfigured() && userTelegramId) {
           try {
             await sendWarningTelegram(userTelegramId, Math.round(hoursRemaining));

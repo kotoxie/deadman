@@ -11,6 +11,7 @@ const SENSITIVE_KEYS = ['smtp_pass', 'telegram_bot_token'];
 const VALID_KEYS = [
   'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_secure',
   'telegram_bot_token',
+  'admin_notify_email', 'admin_notify_telegram_chat_id',
 ];
 
 router.get('/', (req, res) => {

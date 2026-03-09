@@ -18,12 +18,13 @@ export function log(action, category, severity = 'info', details = null, ipAddre
 /**
  * Find audit logs with optional filters and pagination.
  */
-export function findAll({ category, severity, limit = 50, offset = 0 } = {}) {
+export function findAll({ category, severity, search, limit = 50, offset = 0 } = {}) {
   let where = 'WHERE 1=1';
   const params = [];
 
   if (category) { where += ' AND category = ?'; params.push(category); }
   if (severity) { where += ' AND severity = ?'; params.push(severity); }
+  if (search) { where += ' AND (action LIKE ? OR details LIKE ? OR ip_address LIKE ?)'; const s = `%${search}%`; params.push(s, s, s); }
 
   const logs = getDb().prepare(`
     SELECT * FROM audit_logs ${where}
