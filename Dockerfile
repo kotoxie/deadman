@@ -15,7 +15,7 @@ COPY frontend/ ./frontend/
 COPY backend/src/ ./backend/src/
 
 # Build frontend → backend/public/
-RUN cd backend && npm run build
+RUN cd frontend && npx vite build
 
 # Stage 2: Production (lean image)
 FROM node:20-alpine AS production
