@@ -63,17 +63,13 @@ services:
     ports:
       - "6680:6680"
     volumes:
-      - deadman_data:/app/data
+      - ./deadman-data:/app/data
     environment:
       - NODE_ENV=production
       - DATA_DIR=/app/data
       - MASTER_PASSWORD=change-me-to-something-strong
       - SESSION_SECRET=generate-a-random-64-char-string
       - DB_ENCRYPTION_KEY=generate-another-random-64-char-string
-
-volumes:
-  deadman_data:
-    driver: local
 ```
 
 ```bash
@@ -131,16 +127,12 @@ services:
     ports:
       - "${PORT:-6680}:6680"
     volumes:
-      - deadman_data:/app/data
+      - ./deadman-data:/app/data
     env_file:
       - .env
     environment:
       - NODE_ENV=production
       - DATA_DIR=/app/data
-
-volumes:
-  deadman_data:
-    driver: local
 ```
 
 #### 4. Build and run
