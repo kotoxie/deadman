@@ -47,22 +47,6 @@ The application includes the following pages:
 
 ---
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Backend | Node.js, Express |
-| Frontend | React 19, Vite 6 |
-| Styling | TailwindCSS v4 |
-| Database | SQLite via sql.js (in-process, zero native deps) |
-| Auth | Session-based (express-session), master password |
-| Encryption | AES-256-GCM, scrypt (N=65536, r=8, p=1) |
-| Email | Nodemailer (any SMTP provider) |
-| Telegram | Telegraf |
-| Scheduling | node-cron |
-
----
-
 ## Quick Start (Docker Compose)
 
 ### 1. Create your project directory
@@ -199,31 +183,6 @@ SMTP and Telegram settings can also be configured through the Settings page in t
 
 ---
 
-## Architecture
-
-```
-deadman/
-├── backend/
-│   └── src/
-│       ├── config/          # App config, database initialization (sql.js)
-│       ├── jobs/            # Cron scheduler (deadline check, warnings, retries)
-│       ├── middleware/       # Auth (session + timing-safe), error handler
-│       ├── models/          # Data models (User, VaultItem, Recipient, etc.)
-│       ├── routes/          # Express API routes
-│       ├── services/        # Crypto, email, Telegram, webhook, delivery orchestration
-│       └── utils/           # Logger (Winston)
-├── frontend/
-│   └── src/
-│       ├── components/      # Reusable UI components (Card, Badge, Button, etc.)
-│       ├── context/         # React auth context (session-based)
-│       ├── hooks/           # Custom hooks (countdown timer)
-│       ├── pages/           # Page components (Dashboard, Vault, Recipients, etc.)
-│       └── services/        # Axios API client
-├── Dockerfile               # Multi-stage build (build frontend, run backend)
-├── docker-compose.yml       # Production deployment config
-└── .env.example             # Environment variable template
-```
-
 ### Database
 
 SQLite via **sql.js** (WebAssembly-based, zero native dependencies). The database runs in-memory with auto-save to disk every 5 seconds, plus explicit save on graceful shutdown (SIGTERM/SIGINT).
@@ -277,68 +236,6 @@ All API routes are prefixed with `/api` and require authentication (except login
 | `PUT` | `/api/settings` | Update settings |
 | `POST` | `/api/settings/test-email` | Send test email |
 | `POST` | `/api/settings/test-telegram` | Send test Telegram message |
-
----
-
-## Security
-
-This application has been through a code-level security review. Implemented protections include:
-
-- **Timing-safe password comparison** (`crypto.timingSafeEqual`) to prevent timing attacks
-- **Rate limiting** on login (10 attempts per 15 minutes) and API (120 requests per minute)
-- **Session cookies** with `httpOnly`, `secure` (in production), and `sameSite: strict`
-- **Helmet** with Content Security Policy in production
-- **SSRF prevention** on webhook URLs (blocks private IPs, localhost, metadata endpoints)
-- **Mass assignment protection** on recipient updates (field whitelist)
-- **Input validation** with `parseInt` NaN guards on all ID parameters
-- **Production env var enforcement** (refuses to start without proper secrets)
-- **HMAC webhook signing** with key derived from DB_ENCRYPTION_KEY
-- **Graceful shutdown** (SIGTERM/SIGINT handlers save and close the database)
-- **Audit logging** of all security-relevant events
-
----
-
-## Delivery Channels
-
-### Email (SMTP)
-
-Works with any SMTP provider. For Gmail, use an [App Password](https://support.google.com/accounts/answer/185833):
-
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=you@gmail.com
-SMTP_PASS=xxxx xxxx xxxx xxxx
-SMTP_FROM=you@gmail.com
-```
-
-### Telegram
-
-1. Create a bot with [@BotFather](https://t.me/BotFather) and get the token
-2. Start a chat with your bot and get your chat ID (use [@userinfobot](https://t.me/userinfobot))
-3. Set the bot token in Settings or `.env`, and add the chat ID to recipients
-
-### Webhook
-
-Add a webhook URL to a recipient. When delivery triggers, a POST request is sent with:
-
-```json
-{
-  "event": "deadman_delivery",
-  "recipientName": "John",
-  "triggeredBy": "deadline",
-  "items": [
-    {
-      "name": "My Password",
-      "type": "password",
-      "content": { "username": "...", "password": "..." }
-    }
-  ],
-  "timestamp": "2024-01-15T10:30:00.000Z"
-}
-```
-
-The request includes an `X-Webhook-Signature` HMAC-SHA256 header for verification.
 
 ---
 

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import AppLayout from './components/layout/AppLayout.jsx';
+import ChangePasswordModal from './components/features/ChangePasswordModal.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import VaultListPage from './pages/VaultListPage.jsx';
@@ -26,6 +27,18 @@ function PublicRoute({ children }) {
   if (loading) return null;
   if (authenticated) return <Navigate to="/dashboard" replace />;
   return children;
+}
+
+function FirstLoginPasswordPrompt() {
+  const { authenticated, passwordChangeRequired, clearPasswordChangeRequired } = useAuth();
+  if (!authenticated || !passwordChangeRequired) return null;
+  return (
+    <ChangePasswordModal
+      open={true}
+      onClose={clearPasswordChangeRequired}
+      isFirstLogin={true}
+    />
+  );
 }
 
 function AppRoutes() {
@@ -57,6 +70,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
+        <FirstLoginPasswordPrompt />
         <Toaster
           position="top-right"
           toastOptions={{

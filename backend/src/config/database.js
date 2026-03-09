@@ -66,40 +66,32 @@ class PreparedStatement {
   }
 
   get(...params) {
-    try {
-      const stmt = this._db.prepare(this._sql);
-      if (params.length) stmt.bind(params);
-      if (stmt.step()) {
-        const cols = stmt.getColumnNames();
-        const vals = stmt.get();
-        stmt.free();
-        const row = {};
-        cols.forEach((c, i) => row[c] = vals[i]);
-        return row;
-      }
+    const stmt = this._db.prepare(this._sql);
+    if (params.length) stmt.bind(params);
+    if (stmt.step()) {
+      const cols = stmt.getColumnNames();
+      const vals = stmt.get();
       stmt.free();
-      return undefined;
-    } catch (err) {
-      throw err;
+      const row = {};
+      cols.forEach((c, i) => row[c] = vals[i]);
+      return row;
     }
+    stmt.free();
+    return undefined;
   }
 
   all(...params) {
     const results = [];
-    try {
-      const stmt = this._db.prepare(this._sql);
-      if (params.length) stmt.bind(params);
-      while (stmt.step()) {
-        const cols = stmt.getColumnNames();
-        const vals = stmt.get();
-        const row = {};
-        cols.forEach((c, i) => row[c] = vals[i]);
-        results.push(row);
-      }
-      stmt.free();
-    } catch (err) {
-      throw err;
+    const stmt = this._db.prepare(this._sql);
+    if (params.length) stmt.bind(params);
+    while (stmt.step()) {
+      const cols = stmt.getColumnNames();
+      const vals = stmt.get();
+      const row = {};
+      cols.forEach((c, i) => row[c] = vals[i]);
+      results.push(row);
     }
+    stmt.free();
     return results;
   }
 

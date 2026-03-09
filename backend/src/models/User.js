@@ -43,6 +43,14 @@ export function updateSettings({ checkinIntervalDays, gracePeriodHours, warningS
   return getUser();
 }
 
+export function setPassword(hash) {
+  getDb().prepare("UPDATE users SET password_hash = ?, password_changed = 1, updated_at = datetime('now') WHERE id = 1").run(hash);
+}
+
+export function markPasswordChanged() {
+  getDb().prepare("UPDATE users SET password_changed = 1, updated_at = datetime('now') WHERE id = 1").run();
+}
+
 export function togglePause(paused) {
   const user = getUser();
 

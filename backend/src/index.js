@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 
 import config from './config/index.js';
 import { initDatabase, closeDatabase } from './config/database.js';
-import { requireAuth, login, logout, checkAuth } from './middleware/auth.js';
+import { requireAuth, login, logout, checkAuth, changePassword, skipPasswordChange } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initializeEmailService } from './services/emailService.js';
 import { initializeTelegram } from './services/telegramService.js';
@@ -96,6 +96,8 @@ async function main() {
   app.post('/api/auth/login', loginLimiter, login);
   app.post('/api/auth/logout', logout);
   app.get('/api/auth/check', checkAuth);
+  app.post('/api/auth/change-password', requireAuth, changePassword);
+  app.post('/api/auth/skip-password-change', requireAuth, skipPasswordChange);
 
   // Protected (rate-limited)
   app.use('/api/dashboard', requireAuth, apiLimiter, dashboardRoutes);

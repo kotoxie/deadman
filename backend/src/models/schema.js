@@ -103,4 +103,12 @@ export function initializeSchema(db) {
       VALUES (1, 14, 48, datetime('now'), datetime('now', '+14 days'))
     `).run();
   }
+
+  // Migration: add password columns if they don't exist
+  try {
+    db.prepare('SELECT password_hash FROM users LIMIT 1').get();
+  } catch {
+    db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
+    db.exec('ALTER TABLE users ADD COLUMN password_changed INTEGER NOT NULL DEFAULT 0');
+  }
 }

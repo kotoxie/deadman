@@ -3,8 +3,9 @@ import { getSettings, updateSettings, testEmail, testTelegram } from '../service
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import Input from '../components/ui/Input.jsx';
+import ChangePasswordModal from '../components/features/ChangePasswordModal.jsx';
 import toast from 'react-hot-toast';
-import { Save, Send } from 'lucide-react';
+import { Save, Send, KeyRound } from 'lucide-react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({});
@@ -12,6 +13,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState('');
   const [testTgChatId, setTestTgChatId] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     getSettings().then(s => { setSettings(s); setLoading(false); }).catch(() => toast.error('Failed to load settings'));
@@ -33,6 +35,20 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <h2 className="text-2xl font-bold text-white">Settings</h2>
+
+      {/* Security / Password */}
+      <Card className="space-y-3">
+        <h3 className="font-semibold text-white">Security</h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-300">Application Password</p>
+            <p className="text-xs text-gray-500">Change the password used to log in</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(true)}>
+            <KeyRound size={14} /> Change Password
+          </Button>
+        </div>
+      </Card>
 
       {/* Check-in Settings */}
       <Card className="space-y-3">
@@ -108,6 +124,13 @@ export default function SettingsPage() {
       <Button onClick={handleSave} disabled={saving} size="lg">
         <Save size={16} /> {saving ? 'Saving...' : 'Save Settings'}
       </Button>
+
+      {/* On-demand Change Password Modal */}
+      <ChangePasswordModal
+        open={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        isFirstLogin={false}
+      />
     </div>
   );
 }

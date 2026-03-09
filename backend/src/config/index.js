@@ -28,7 +28,7 @@ const config = Object.freeze({
   isDev,
   dataDir: path.resolve(process.env.DATA_DIR || path.join(__dirname, '../../data')),
   masterPassword: process.env.MASTER_PASSWORD || 'admin',
-  sessionSecret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'dev-session-fallback',
+  sessionSecret: process.env.SESSION_SECRET || 'dev-session-fallback',
   dbEncryptionKey: process.env.DB_ENCRYPTION_KEY || 'dev-encryption-key-change-in-production',
 });
 

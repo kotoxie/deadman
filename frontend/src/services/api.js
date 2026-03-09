@@ -16,6 +16,8 @@ api.interceptors.response.use(
 export const authLogin = (password) => api.post('/auth/login', { password });
 export const authLogout = () => api.post('/auth/logout');
 export const authCheck = () => api.get('/auth/check');
+export const changePassword = (newPassword) => api.post('/auth/change-password', { newPassword }).then(r => r.data);
+export const skipPasswordChange = () => api.post('/auth/skip-password-change').then(r => r.data);
 
 // Dashboard
 export const getDashboard = () => api.get('/dashboard').then(r => r.data);
