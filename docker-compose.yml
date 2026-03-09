@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  deadman:
+    build: .
+    container_name: deadman-switch
+    restart: unless-stopped
+    ports:
+      - "${PORT:-6680}:6680"
+    volumes:
+      - deadman_data:/app/data
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATA_DIR=/app/data
+
+volumes:
+  deadman_data:
+    driver: local
