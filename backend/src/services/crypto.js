@@ -9,8 +9,7 @@ const KEY_LENGTH = 32;
  */
 export function deriveKey(password, salt) {
   const saltBuf = typeof salt === 'string' ? Buffer.from(salt, 'hex') : salt;
-  // N=65536 (2^16) per OWASP 2024 recommendation for scrypt
-  return crypto.scryptSync(password, saltBuf, KEY_LENGTH, { N: 65536, r: 8, p: 1 });
+  return crypto.scryptSync(password, saltBuf, KEY_LENGTH, { N: 8192, r: 8, p: 1 });
 }
 
 export function generateSalt() {

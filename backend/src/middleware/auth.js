@@ -12,7 +12,7 @@ export function requireAuth(req, res, next) {
 }
 
 // ─── Password Hashing (scrypt) ──────────────────────────────────
-const SCRYPT_N = 16384;  // 2^14 — secure and Docker-friendly
+const SCRYPT_N = 8192;   // 2^13 — secure and low-memory Docker-friendly
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const KEY_LEN = 64;
