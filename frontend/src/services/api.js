@@ -26,6 +26,7 @@ export const getDashboard = () => api.get('/dashboard').then(r => r.data);
 export const checkIn = () => api.post('/checkin').then(r => r.data);
 export const triggerPanic = () => api.post('/checkin/panic', {}, { headers: { 'X-Confirm': 'DELIVER' } }).then(r => r.data);
 export const togglePause = (paused) => api.post('/checkin/pause', { paused }).then(r => r.data);
+export const testWarning = () => api.post('/checkin/test-warning').then(r => r.data);
 
 // Vault
 export const getVaultItems = () => api.get('/vault').then(r => r.data);

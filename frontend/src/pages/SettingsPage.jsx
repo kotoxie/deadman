@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getSettings, updateSettings, testEmail, testTelegram } from '../services/api.js';
+import { getSettings, updateSettings, testEmail, testTelegram, testWarning } from '../services/api.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import Input from '../components/ui/Input.jsx';
@@ -124,6 +124,18 @@ export default function SettingsPage() {
             onChange={e => update('admin_notify_telegram_chat_id', e.target.value)}
             placeholder="123456789"
           />
+          <Button variant="secondary" size="sm" onClick={async () => {
+            try {
+              const result = await testWarning();
+              const parts = [];
+              for (const [ch, info] of Object.entries(result.channels || {})) {
+                parts.push(`${ch}: ${info.status}${info.error ? ` (${info.error})` : ''}`);
+              }
+              toast.success(`Test warning sent! ${parts.join(', ')}`, { duration: 5000 });
+            } catch (err) { toast.error(err.response?.data?.error || 'Test warning failed'); }
+          }}>
+            <Bell size={14} /> Test Warning
+          </Button>
         </Card>
       </Section>
 

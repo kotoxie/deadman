@@ -14,7 +14,8 @@ router.get('/', (req, res) => {
   const stats = DeliveryLog.getStats();
 
   const now = Date.now();
-  const deadline = new Date(user.next_deadline_at + 'Z').getTime();
+  const raw = user.next_deadline_at;
+  const deadline = new Date(raw.endsWith('Z') ? raw : raw + 'Z').getTime();
   const remainingMs = Math.max(0, deadline - now);
 
   res.json({

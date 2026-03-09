@@ -27,13 +27,20 @@ export function startScheduler() {
   logger.info('Scheduler started');
 }
 
+function parseDeadline(raw) {
+  // Handle both SQLite "2026-03-10 15:36:49" and ISO "2026-03-10T15:36:49.000Z"
+  const d = new Date(raw.endsWith('Z') ? raw : raw + 'Z');
+  if (isNaN(d.getTime())) throw new Error(`Invalid deadline date: ${raw}`);
+  return d.getTime();
+}
+
 async function checkDeadline() {
   try {
     const user = User.getUser();
     if (!user || user.is_paused) return;
 
     const now = Date.now();
-    const deadline = new Date(user.next_deadline_at + 'Z').getTime();
+    const deadline = parseDeadline(user.next_deadline_at);
     const graceEnd = deadline + user.grace_period_hours * 3600000;
 
     if (now > graceEnd) {
@@ -48,13 +55,51 @@ async function checkDeadline() {
   }
 }
 
+export async function testWarnings() {
+  const user = User.getUser();
+  if (!user) throw new Error('No user found');
+
+  const now = Date.now();
+  const deadline = parseDeadline(user.next_deadline_at);
+  const hoursRemaining = (deadline - now) / 3600000;
+
+  const results = { hoursRemaining: Math.round(hoursRemaining * 100) / 100, deadline: user.next_deadline_at, channels: {} };
+
+  const userEmail = Setting.get('admin_notify_email');
+  if (emailConfigured() && userEmail) {
+    try {
+      await sendWarningEmail(userEmail, Math.round(hoursRemaining));
+      results.channels.email = { status: 'sent', to: userEmail };
+    } catch (err) {
+      results.channels.email = { status: 'failed', to: userEmail, error: err.message };
+    }
+  } else {
+    results.channels.email = { status: 'skipped', configured: emailConfigured(), to: userEmail || null };
+  }
+
+  const userTelegramId = Setting.get('admin_notify_telegram_chat_id');
+  if (telegramConfigured() && userTelegramId) {
+    try {
+      await sendWarningTelegram(userTelegramId, Math.round(hoursRemaining));
+      results.channels.telegram = { status: 'sent', chatId: userTelegramId };
+    } catch (err) {
+      results.channels.telegram = { status: 'failed', chatId: userTelegramId, error: err.message };
+    }
+  } else {
+    results.channels.telegram = { status: 'skipped', configured: telegramConfigured(), chatId: userTelegramId || null };
+  }
+
+  AuditLog.log('Test warning triggered manually', 'checkin', 'info', JSON.stringify(results));
+  return results;
+}
+
 async function checkWarnings() {
   try {
     const user = User.getUser();
     if (!user || user.is_paused) return;
 
     const now = Date.now();
-    const deadline = new Date(user.next_deadline_at + 'Z').getTime();
+    const deadline = parseDeadline(user.next_deadline_at);
     const hoursRemaining = (deadline - now) / 3600000;
 
     if (hoursRemaining <= 0) return;

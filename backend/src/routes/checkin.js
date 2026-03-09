@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as User from '../models/User.js';
 import * as WarningLog from '../models/WarningLog.js';
 import { triggerAllDeliveries } from '../services/deliveryService.js';
+import { testWarnings } from '../jobs/scheduler.js';
 import logger from '../utils/logger.js';
 import * as AuditLog from '../models/AuditLog.js';
 
@@ -18,6 +19,17 @@ router.post('/', (req, res) => {
     nextDeadlineAt: user.next_deadline_at,
     lastCheckinAt: user.last_checkin_at,
   });
+});
+
+// Test warning notifications
+router.post('/test-warning', async (req, res) => {
+  try {
+    const results = await testWarnings();
+    res.json({ success: true, ...results });
+  } catch (err) {
+    logger.error('Test warning failed:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Panic - immediately trigger all deliveries
