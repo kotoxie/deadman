@@ -143,36 +143,91 @@ export default function SettingsPage() {
       <Section title="Notification Templates" icon={FileText}>
         <Card className="space-y-4">
           <p className="text-xs text-gray-500">
-            Customize the warning messages sent to you before the deadline. Use <code className="text-gray-400 bg-black/30 px-1 rounded">{'{{hours}}'}</code> as a placeholder for the hours remaining.
+            Customize the warning messages sent to you before the deadline. Use <code className="text-gray-400 bg-black/30 px-1 rounded">{'{{hours}}'}</code> as a placeholder for hours remaining. Leave fields empty to use the default templates.
           </p>
-          <div>
-            <Input
-              label="Email Subject"
-              value={settings.warning_email_subject || ''}
-              onChange={e => update('warning_email_subject', e.target.value)}
-              placeholder="[Dead Man's Switch] Warning: {{hours}}h remaining"
-            />
+
+          {/* Email Template */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-300 flex items-center gap-2"><Mail size={14} /> Email Template</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (settings.warning_email_subject || settings.warning_email_body) {
+                    update('warning_email_subject', '');
+                    update('warning_email_body', '');
+                  } else {
+                    update('warning_email_subject', "[Dead Man's Switch] Warning: {{hours}}h remaining");
+                    update('warning_email_body', 'Your Dead Man\'s Switch deadline is in {{hours}} hours. Please check in to prevent delivery.');
+                  }
+                }}
+                className={`relative w-10 h-5 rounded-full transition-colors ${settings.warning_email_subject || settings.warning_email_body ? 'bg-brand' : 'bg-gray-600'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.warning_email_subject || settings.warning_email_body ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+            {(settings.warning_email_subject || settings.warning_email_body) ? (
+              <div className="space-y-3 pl-1 border-l-2 border-brand/20 ml-1">
+                <div className="pl-3">
+                  <Input
+                    label="Subject"
+                    value={settings.warning_email_subject || ''}
+                    onChange={e => update('warning_email_subject', e.target.value)}
+                    placeholder="[Dead Man's Switch] Warning: {{hours}}h remaining"
+                  />
+                </div>
+                <div className="pl-3 space-y-1">
+                  <label className="block text-sm font-medium text-gray-300">Body</label>
+                  <textarea
+                    className="w-full rounded-lg border border-border bg-surface-light px-3 py-2 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 min-h-[80px] resize-y"
+                    value={settings.warning_email_body || ''}
+                    onChange={e => update('warning_email_body', e.target.value)}
+                    placeholder="Your Dead Man's Switch deadline is in {{hours}} hours. Please check in to prevent delivery."
+                    rows={3}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-600 italic pl-1">Using default email template</p>
+            )}
           </div>
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-300">Email Body</label>
-            <textarea
-              className="w-full rounded-lg border border-border bg-surface-light px-3 py-2 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 min-h-[80px] resize-y"
-              value={settings.warning_email_body || ''}
-              onChange={e => update('warning_email_body', e.target.value)}
-              placeholder="Your Dead Man's Switch deadline is in {{hours}} hours. Please check in to prevent delivery."
-              rows={3}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-300">Telegram Message</label>
-            <textarea
-              className="w-full rounded-lg border border-border bg-surface-light px-3 py-2 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 min-h-[80px] resize-y"
-              value={settings.warning_telegram_template || ''}
-              onChange={e => update('warning_telegram_template', e.target.value)}
-              placeholder={'⚠️ <b>Dead Man\'s Switch Warning</b>\n\nYour deadline is in <b>{{hours}} hours</b>. Please check in to prevent delivery.'}
-              rows={3}
-            />
-            <p className="text-xs text-gray-500">Supports HTML formatting: &lt;b&gt;bold&lt;/b&gt;, &lt;i&gt;italic&lt;/i&gt;, &lt;code&gt;code&lt;/code&gt;</p>
+
+          <hr className="border-border" />
+
+          {/* Telegram Template */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-300 flex items-center gap-2"><MessageCircle size={14} /> Telegram Template</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (settings.warning_telegram_template) {
+                    update('warning_telegram_template', '');
+                  } else {
+                    update('warning_telegram_template', '⚠️ <b>Dead Man\'s Switch Warning</b>\n\nYour deadline is in <b>{{hours}} hours</b>. Please check in to prevent delivery.');
+                  }
+                }}
+                className={`relative w-10 h-5 rounded-full transition-colors ${settings.warning_telegram_template ? 'bg-brand' : 'bg-gray-600'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.warning_telegram_template ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+            {settings.warning_telegram_template ? (
+              <div className="space-y-1 pl-1 border-l-2 border-brand/20 ml-1">
+                <div className="pl-3 space-y-1">
+                  <label className="block text-sm font-medium text-gray-300">Message</label>
+                  <textarea
+                    className="w-full rounded-lg border border-border bg-surface-light px-3 py-2 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 min-h-[80px] resize-y"
+                    value={settings.warning_telegram_template || ''}
+                    onChange={e => update('warning_telegram_template', e.target.value)}
+                    rows={3}
+                  />
+                  <p className="text-xs text-gray-500">Supports HTML: &lt;b&gt;bold&lt;/b&gt;, &lt;i&gt;italic&lt;/i&gt;, &lt;code&gt;code&lt;/code&gt;</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-600 italic pl-1">Using default Telegram template</p>
+            )}
           </div>
         </Card>
       </Section>

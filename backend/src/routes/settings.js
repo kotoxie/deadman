@@ -8,6 +8,7 @@ import * as AuditLog from '../models/AuditLog.js';
 const router = Router();
 
 const SENSITIVE_KEYS = ['smtp_pass', 'telegram_bot_token'];
+const SENSITIVE_MASK = '********';
 const VALID_KEYS = [
   'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_secure',
   'telegram_bot_token',
@@ -36,7 +37,11 @@ router.put('/', (req, res) => {
     if (key === 'checkin_interval_days') userFields.checkinIntervalDays = parseInt(value);
     else if (key === 'grace_period_hours') userFields.gracePeriodHours = parseInt(value);
     else if (key === 'warning_schedule') userFields.warningSchedule = value;
-    else if (VALID_KEYS.includes(key)) settingUpdates[key] = value;
+    else if (VALID_KEYS.includes(key)) {
+      // Skip sensitive keys if the value is the mask (unchanged from frontend)
+      if (SENSITIVE_KEYS.includes(key) && value === SENSITIVE_MASK) continue;
+      settingUpdates[key] = value;
+    }
   }
 
   // Capture old values before updating
