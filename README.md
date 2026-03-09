@@ -49,13 +49,49 @@ The application includes the following pages:
 
 ## Quick Start (Docker Compose)
 
-### 1. Create your project directory
+### Option A: Pull from GitHub Container Registry (recommended)
+
+The fastest way to get started -- no build required:
+
+```yaml
+# docker-compose.yml
+services:
+  deadman:
+    image: ghcr.io/kotoxie/deadman:latest
+    container_name: deadman-switch
+    restart: unless-stopped
+    ports:
+      - "6680:6680"
+    volumes:
+      - deadman_data:/app/data
+    environment:
+      - NODE_ENV=production
+      - DATA_DIR=/app/data
+      - MASTER_PASSWORD=change-me-to-something-strong
+      - SESSION_SECRET=generate-a-random-64-char-string
+      - DB_ENCRYPTION_KEY=generate-another-random-64-char-string
+
+volumes:
+  deadman_data:
+    driver: local
+```
+
+```bash
+docker compose up -d
+# Open http://localhost:6680
+```
+
+> **Tip:** Pin a specific version instead of `latest` for stability, e.g. `ghcr.io/kotoxie/deadman:0.1.5`
+
+### Option B: Build from source
+
+#### 1. Create your project directory
 
 ```bash
 mkdir deadman-switch && cd deadman-switch
 ```
 
-### 2. Create a `.env` file
+#### 2. Create a `.env` file
 
 ```env
 # Server
@@ -84,10 +120,9 @@ DATA_DIR=/app/data
 # TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
 ```
 
-### 3. Create `docker-compose.yml`
+#### 3. Create `docker-compose.yml`
 
 ```yaml
-version: '3.8'
 services:
   deadman:
     build: .
@@ -108,7 +143,7 @@ volumes:
     driver: local
 ```
 
-### 4. Build and run
+#### 4. Build and run
 
 ```bash
 docker compose up -d
@@ -128,7 +163,7 @@ The app will be available at `http://localhost:6680`.
 ### 1. Clone and install
 
 ```bash
-git clone <your-repo-url> deadman-switch
+git clone https://github.com/kotoxie/deadman.git deadman-switch
 cd deadman-switch
 
 # Install backend dependencies
@@ -213,6 +248,8 @@ All API routes are prefixed with `/api` and require authentication (except login
 | `POST` | `/api/auth/login` | Login with master password (rate limited: 10/15min) |
 | `POST` | `/api/auth/logout` | End session |
 | `GET` | `/api/auth/check` | Check authentication status |
+| `POST` | `/api/auth/change-password` | Change password (requires auth) |
+| `POST` | `/api/auth/skip-password-change` | Skip first-login password change prompt |
 | `GET` | `/api/dashboard` | Dashboard stats and countdown |
 | `POST` | `/api/checkin` | Check in (reset deadline) |
 | `POST` | `/api/checkin/panic` | Trigger immediate delivery (requires `X-Confirm: DELIVER` header) |
