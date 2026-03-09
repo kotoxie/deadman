@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import * as User from '../models/User.js';
 import * as WarningLog from '../models/WarningLog.js';
+import * as AuditLog from '../models/AuditLog.js';
 import { triggerAllDeliveries, processRetryQueue } from '../services/deliveryService.js';
 import { sendWarningEmail, isConfigured as emailConfigured } from '../services/emailService.js';
 import { sendWarningTelegram, isConfigured as telegramConfigured } from '../services/telegramService.js';
@@ -37,6 +38,7 @@ async function checkDeadline() {
 
     if (now > graceEnd) {
       logger.warn('DEADLINE EXCEEDED - Triggering delivery');
+      AuditLog.log('Deadline exceeded — triggering delivery to all recipients', 'delivery', 'critical');
       await triggerAllDeliveries('deadline');
       // Pause after delivery to prevent re-triggering
       User.togglePause(true);
@@ -63,14 +65,19 @@ async function checkWarnings() {
       if (hoursRemaining <= threshold && !WarningLog.wasWarningSent(threshold)) {
         logger.info(`Sending warning: ${threshold}h before deadline`);
 
+        let sent = false;
+
         // Send warning to admin only (not recipients)
         const userEmail = Setting.get('admin_notify_email');
         if (emailConfigured() && userEmail) {
           try {
             await sendWarningEmail(userEmail, Math.round(hoursRemaining));
             WarningLog.create({ hoursBeforeDeadline: threshold, method: 'email', status: 'sent' });
+            AuditLog.log(`Check-in reminder sent via email (${threshold}h threshold, ${Math.round(hoursRemaining)}h remaining)`, 'checkin', 'warning', JSON.stringify({ to: userEmail, threshold, hoursRemaining: Math.round(hoursRemaining) }));
+            sent = true;
           } catch (err) {
             WarningLog.create({ hoursBeforeDeadline: threshold, method: 'email', status: 'failed' });
+            AuditLog.log(`Check-in reminder email failed (${threshold}h threshold)`, 'checkin', 'warning', JSON.stringify({ error: err.message, to: userEmail }));
             logger.error(`Warning email failed: ${err.message}`);
           }
         }
@@ -80,10 +87,19 @@ async function checkWarnings() {
           try {
             await sendWarningTelegram(userTelegramId, Math.round(hoursRemaining));
             WarningLog.create({ hoursBeforeDeadline: threshold, method: 'telegram', status: 'sent' });
+            AuditLog.log(`Check-in reminder sent via Telegram (${threshold}h threshold, ${Math.round(hoursRemaining)}h remaining)`, 'checkin', 'warning', JSON.stringify({ chatId: userTelegramId, threshold, hoursRemaining: Math.round(hoursRemaining) }));
+            sent = true;
           } catch (err) {
             WarningLog.create({ hoursBeforeDeadline: threshold, method: 'telegram', status: 'failed' });
+            AuditLog.log(`Check-in reminder Telegram failed (${threshold}h threshold)`, 'checkin', 'warning', JSON.stringify({ error: err.message, chatId: userTelegramId }));
             logger.error(`Warning telegram failed: ${err.message}`);
           }
+        }
+
+        // Log if no notification channels configured
+        if (!sent) {
+          AuditLog.log(`Check-in reminder skipped — no admin notification channels configured (${threshold}h threshold, ${Math.round(hoursRemaining)}h remaining)`, 'checkin', 'warning', JSON.stringify({ emailConfigured: emailConfigured(), hasAdminEmail: !!userEmail, telegramConfigured: telegramConfigured(), hasAdminTelegram: !!userTelegramId }));
+          logger.warn(`Warning for ${threshold}h threshold skipped: no admin notification channels configured`);
         }
       }
     }
