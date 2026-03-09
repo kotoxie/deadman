@@ -50,7 +50,7 @@ async function main() {
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
-        connectSrc: ["'self'"],
+        connectSrc: ["'self'", "https://api.github.com"],
         upgradeInsecureRequests: config.secureCookies ? [] : null,
       },
     },
@@ -95,6 +95,12 @@ async function main() {
   });
 
   // ─── API routes ───────────────────────────────────────────────
+  // Version (public)
+  app.get('/api/version', (req, res) => res.json({
+    version: config.version,
+    repoUrl: config.repoUrl,
+  }));
+
   // Auth (public, rate-limited)
   app.post('/api/auth/login', loginLimiter, login);
   app.post('/api/auth/logout', logout);

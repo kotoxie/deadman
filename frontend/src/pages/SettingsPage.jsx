@@ -5,7 +5,7 @@ import Button from '../components/ui/Button.jsx';
 import Input from '../components/ui/Input.jsx';
 import ChangePasswordModal from '../components/features/ChangePasswordModal.jsx';
 import toast from 'react-hot-toast';
-import { Save, Send, KeyRound, Clock, Mail, MessageCircle, Bell, ChevronDown, ChevronRight } from 'lucide-react';
+import { Save, Send, KeyRound, Clock, Mail, MessageCircle, Bell, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 
 function Section({ title, icon: Icon, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -136,6 +136,44 @@ export default function SettingsPage() {
           }}>
             <Bell size={14} /> Test Warning
           </Button>
+        </Card>
+      </Section>
+
+      {/* Notification Templates */}
+      <Section title="Notification Templates" icon={FileText}>
+        <Card className="space-y-4">
+          <p className="text-xs text-gray-500">
+            Customize the warning messages sent to you before the deadline. Use <code className="text-gray-400 bg-black/30 px-1 rounded">{'{{hours}}'}</code> as a placeholder for the hours remaining.
+          </p>
+          <div>
+            <Input
+              label="Email Subject"
+              value={settings.warning_email_subject || ''}
+              onChange={e => update('warning_email_subject', e.target.value)}
+              placeholder="[Dead Man's Switch] Warning: {{hours}}h remaining"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-300">Email Body</label>
+            <textarea
+              className="w-full rounded-lg border border-border bg-surface-light px-3 py-2 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 min-h-[80px] resize-y"
+              value={settings.warning_email_body || ''}
+              onChange={e => update('warning_email_body', e.target.value)}
+              placeholder="Your Dead Man's Switch deadline is in {{hours}} hours. Please check in to prevent delivery."
+              rows={3}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-300">Telegram Message</label>
+            <textarea
+              className="w-full rounded-lg border border-border bg-surface-light px-3 py-2 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 min-h-[80px] resize-y"
+              value={settings.warning_telegram_template || ''}
+              onChange={e => update('warning_telegram_template', e.target.value)}
+              placeholder={'⚠️ <b>Dead Man\'s Switch Warning</b>\n\nYour deadline is in <b>{{hours}} hours</b>. Please check in to prevent delivery.'}
+              rows={3}
+            />
+            <p className="text-xs text-gray-500">Supports HTML formatting: &lt;b&gt;bold&lt;/b&gt;, &lt;i&gt;italic&lt;/i&gt;, &lt;code&gt;code&lt;/code&gt;</p>
+          </div>
         </Card>
       </Section>
 

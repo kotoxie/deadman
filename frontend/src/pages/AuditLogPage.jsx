@@ -45,11 +45,15 @@ function AuditRow({ log }) {
               <span className="text-gray-600 truncate max-w-xs">{log.details}</span>
             )}
           </div>
-          {expanded && hasDetails && (
-            <pre className="mt-2 text-xs text-gray-400 bg-black/30 rounded-lg p-3 whitespace-pre-wrap break-all overflow-x-auto max-h-64 overflow-y-auto">
-              {tryFormatJson(log.details)}
-            </pre>
-          )}
+          {expanded && hasDetails && (() => {
+            const changes = tryParseChanges(log.details);
+            if (changes) return <ChangesTable changes={changes} />;
+            return (
+              <pre className="mt-2 text-xs text-gray-400 bg-black/30 rounded-lg p-3 whitespace-pre-wrap break-all overflow-x-auto max-h-64 overflow-y-auto">
+                {tryFormatJson(log.details)}
+              </pre>
+            );
+          })()}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className={`text-xs font-medium ${catColor}`}>{log.category}</span>
@@ -65,12 +69,51 @@ function AuditRow({ log }) {
   );
 }
 
+function tryParseChanges(str) {
+  try {
+    const parsed = JSON.parse(str);
+    if (parsed.changes && Array.isArray(parsed.changes)) return parsed.changes;
+  } catch {}
+  return null;
+}
+
 function tryFormatJson(str) {
   try {
     return JSON.stringify(JSON.parse(str), null, 2);
   } catch {
     return str;
   }
+}
+
+function ChangesTable({ changes }) {
+  return (
+    <div className="mt-2 rounded-lg overflow-hidden border border-border">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="bg-black/30 text-gray-400">
+            <th className="text-left px-3 py-1.5 font-medium">Setting</th>
+            <th className="text-left px-3 py-1.5 font-medium">Old Value</th>
+            <th className="text-left px-3 py-1.5 font-medium">New Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {changes.map((c, i) => (
+            <tr key={i} className="border-t border-border/50">
+              <td className="px-3 py-1.5 text-gray-300 font-mono">{c.key}</td>
+              <td className="px-3 py-1.5 text-red-400/80 font-mono">{formatValue(c.from)}</td>
+              <td className="px-3 py-1.5 text-green-400/80 font-mono">{formatValue(c.to)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function formatValue(v) {
+  if (Array.isArray(v)) return v.join(', ');
+  if (v === null || v === undefined) return '(empty)';
+  return String(v);
 }
 
 export default function AuditLogPage() {

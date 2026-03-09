@@ -57,6 +57,9 @@ export const retryDelivery = (id) => api.post(`/delivery-logs/${id}/retry`).then
 // Audit Logs
 export const getAuditLogs = (params) => api.get('/audit-logs', { params }).then(r => r.data);
 
+// Version
+export const getVersion = () => api.get('/version').then(r => r.data);
+
 // Settings
 export const getSettings = () => api.get('/settings').then(r => r.data);
 export const updateSettings = (data) => api.put('/settings', data).then(r => r.data);

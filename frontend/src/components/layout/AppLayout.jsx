@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Shield, Users, ScrollText, ShieldAlert, Settings, Skull, LogOut } from 'lucide-react';
+import { LayoutDashboard, Shield, Users, ScrollText, ShieldAlert, Settings, Skull, LogOut, ArrowUpCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { getVersion } from '../../services/api.js';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -11,8 +13,43 @@ const navItems = [
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
+function compareVersions(a, b) {
+  const pa = a.replace(/^v/, '').split('.').map(Number);
+  const pb = b.replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+  }
+  return 0;
+}
+
 export default function AppLayout() {
   const { logout } = useAuth();
+  const [version, setVersion] = useState(null);
+  const [repoUrl, setRepoUrl] = useState('');
+  const [latestVersion, setLatestVersion] = useState(null);
+
+  useEffect(() => {
+    getVersion().then(v => {
+      setVersion(v.version);
+      setRepoUrl(v.repoUrl);
+
+      // Check GitHub for latest release (best-effort, no error handling needed)
+      const match = v.repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+      if (match) {
+        fetch(`https://api.github.com/repos/${match[1]}/releases/latest`)
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data?.tag_name && compareVersions(v.version, data.tag_name) < 0) {
+              setLatestVersion(data.tag_name);
+            }
+          })
+          .catch(() => {});
+      }
+    }).catch(() => {});
+  }, []);
+
+  const hasUpdate = latestVersion !== null;
 
   return (
     <div className="flex h-screen">
@@ -47,7 +84,24 @@ export default function AppLayout() {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-border space-y-2">
+          {version && (
+            <a
+              href={hasUpdate ? `${repoUrl}/releases/tag/${latestVersion}` : `${repoUrl}/releases`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                hasUpdate
+                  ? 'text-green-400 bg-green-400/10 hover:bg-green-400/20'
+                  : 'text-gray-500 hover:text-gray-400 hover:bg-surface-lighter'
+              }`}
+              title={hasUpdate ? `Update available: ${latestVersion}` : 'View releases on GitHub'}
+            >
+              {hasUpdate && <ArrowUpCircle size={14} className="shrink-0" />}
+              <span className="font-mono">v{version}</span>
+              {hasUpdate && <span className="text-green-400/70 ml-auto">{latestVersion} available</span>}
+            </a>
+          )}
           <button
             onClick={logout}
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-surface-lighter w-full transition-colors"

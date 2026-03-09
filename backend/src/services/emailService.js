@@ -54,14 +54,20 @@ export async function sendDeliveryEmail(recipientEmail, itemName, itemType, cont
   logger.info(`Email sent to ${recipientEmail} for item "${itemName}"`);
 }
 
+const DEFAULT_WARNING_SUBJECT = `[Dead Man's Switch] Warning: {{hours}}h remaining`;
+const DEFAULT_WARNING_BODY = `Your Dead Man's Switch deadline is in {{hours}} hours. Please check in to prevent delivery.`;
+
 export async function sendWarningEmail(email, hoursRemaining) {
   if (!transporter) return;
+
+  const subjectTpl = Setting.get('warning_email_subject') || DEFAULT_WARNING_SUBJECT;
+  const bodyTpl = Setting.get('warning_email_body') || DEFAULT_WARNING_BODY;
 
   await transporter.sendMail({
     from: getFrom(),
     to: email,
-    subject: `[Dead Man's Switch] Warning: ${hoursRemaining}h remaining`,
-    text: `Your Dead Man's Switch deadline is in ${hoursRemaining} hours. Please check in to prevent delivery.`,
+    subject: subjectTpl.replace(/\{\{hours\}\}/g, hoursRemaining),
+    text: bodyTpl.replace(/\{\{hours\}\}/g, hoursRemaining),
   });
 }
 

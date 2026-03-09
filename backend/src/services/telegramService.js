@@ -34,11 +34,14 @@ export async function sendDeliveryTelegram(chatId, itemName, itemType, content) 
   logger.info(`Telegram message sent to ${chatId} for item "${itemName}"`);
 }
 
+const DEFAULT_WARNING_TELEGRAM = `⚠️ <b>Dead Man's Switch Warning</b>\n\nYour deadline is in <b>{{hours}} hours</b>. Please check in to prevent delivery.`;
+
 export async function sendWarningTelegram(chatId, hoursRemaining) {
   if (!bot) return;
+  const template = Setting.get('warning_telegram_template') || DEFAULT_WARNING_TELEGRAM;
   await bot.telegram.sendMessage(
     chatId,
-    `⚠️ <b>Dead Man's Switch Warning</b>\n\nYour deadline is in <b>${hoursRemaining} hours</b>. Please check in to prevent delivery.`,
+    template.replace(/\{\{hours\}\}/g, hoursRemaining),
     { parse_mode: 'HTML' }
   );
 }
