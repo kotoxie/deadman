@@ -18,35 +18,6 @@ A **Panic** button is available to trigger immediate delivery of everything, and
 
 ---
 
-## Features
-
-- **Encrypted Vault** -- AES-256-GCM encryption at rest, scrypt key derivation (N=65536)
-- **Multi-channel Delivery** -- Email (SMTP), Telegram bot, and webhook support
-- **Countdown Timer** -- Real-time dashboard showing time remaining until delivery
-- **Warning System** -- Configurable alerts at multiple thresholds before deadline
-- **Automatic Retries** -- Failed deliveries are retried every 5 minutes (up to 3 attempts)
-- **Audit Log** -- Full security event log with category/severity filtering
-- **Delivery Logs** -- Complete history of all deliveries with retry capability
-- **Single-user Design** -- One master password, no account management complexity
-- **Dark UI** -- Clean, modern interface built with React and TailwindCSS v4
-- **Docker-ready** -- Single-container deployment with persistent volume
-- **Security Hardened** -- Rate limiting, CSRF protection, timing-safe auth, SSRF prevention, Helmet CSP headers
-
----
-
-## Screenshots
-
-The application includes the following pages:
-
-- **Dashboard** -- Countdown timer, check-in/pause/panic controls, quick stats
-- **Vault** -- Create and manage encrypted items (notes, passwords, wallets, files)
-- **Recipients** -- Manage people who will receive your data, with test delivery
-- **Delivery Logs** -- History of all deliveries with status and retry options
-- **Audit Log** -- Security event trail with filtering by category and severity
-- **Settings** -- Configure check-in interval, grace period, SMTP, Telegram
-
----
-
 ## Quick Start (Docker Compose)
 
 ### Option A: Pull from GitHub Container Registry (recommended)
@@ -210,27 +181,6 @@ SMTP and Telegram settings can also be configured through the Settings page in t
 
 ---
 
-### Database
-
-SQLite via **sql.js** (WebAssembly-based, zero native dependencies). The database runs in-memory with auto-save to disk every 5 seconds, plus explicit save on graceful shutdown (SIGTERM/SIGINT).
-
-### Encryption
-
-- Vault items are encrypted with **AES-256-GCM**
-- Encryption key is derived from `DB_ENCRYPTION_KEY` using **scrypt** (N=65536, r=8, p=1)
-- Each item has its own random IV and authentication tag
-- Sensitive settings (SMTP password, Telegram token) are also encrypted at rest
-
-### Scheduled Jobs
-
-| Job | Interval | Purpose |
-|-----|----------|---------|
-| Deadline check | Every 1 minute | Triggers delivery if deadline + grace period exceeded |
-| Warning check | Every 15 minutes | Sends warning notifications at configured thresholds |
-| Retry queue | Every 5 minutes | Retries failed deliveries (up to 3 attempts) |
-
----
-
 ## API Endpoints
 
 All API routes are prefixed with `/api` and require authentication (except login/check).
@@ -277,10 +227,3 @@ MIT
 ## Disclaimer
 
 This software is provided as-is, without warranty of any kind. This is a **vibe coding project** -- built rapidly through AI-assisted development as a proof of concept. While security best practices have been applied, the codebase has **not undergone a formal security audit**.
-
-Do not rely on this as your sole method of transmitting critical information. Always:
-
-- Keep separate, redundant backups of important data
-- Test the delivery flow thoroughly before depending on it
-- Regularly verify your SMTP/Telegram configuration still works
-- Consider the legal implications of automated posthumous data transfer in your jurisdiction
