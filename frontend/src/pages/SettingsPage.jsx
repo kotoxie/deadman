@@ -70,21 +70,27 @@ export default function SettingsPage() {
 
       {/* Check-in Configuration */}
       <Section title="Check-in Configuration" icon={Clock}>
-        <Card className="space-y-3">
-          <Input
-            label="Check-in Interval (days)"
-            type="number"
-            min={1}
-            value={settings.checkin_interval_days || 14}
-            onChange={e => update('checkin_interval_days', parseInt(e.target.value))}
-          />
-          <Input
-            label="Grace Period (hours)"
-            type="number"
-            min={0}
-            value={settings.grace_period_hours || 48}
-            onChange={e => update('grace_period_hours', parseInt(e.target.value))}
-          />
+        <Card className="space-y-4">
+          <div>
+            <Input
+              label="Check-in Interval (days)"
+              type="number"
+              min={1}
+              value={settings.checkin_interval_days || 14}
+              onChange={e => update('checkin_interval_days', parseInt(e.target.value))}
+            />
+            <p className="mt-1 text-xs text-gray-500">How often you must check in. If you don't check in within this many days, the deadline countdown begins.</p>
+          </div>
+          <div>
+            <Input
+              label="Grace Period (hours)"
+              type="number"
+              min={0}
+              value={settings.grace_period_hours || 48}
+              onChange={e => update('grace_period_hours', parseInt(e.target.value))}
+            />
+            <p className="mt-1 text-xs text-gray-500">Extra time after the deadline passes before vault contents are delivered to recipients. Acts as a safety net — if you miss the deadline by a day due to travel, illness, or a lost phone, you can still check in during the grace period to prevent delivery.</p>
+          </div>
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-300">
               Warning Schedule (hours before deadline, comma-separated)
@@ -94,6 +100,7 @@ export default function SettingsPage() {
               value={Array.isArray(settings.warning_schedule) ? settings.warning_schedule.join(', ') : '72, 48, 24, 12, 6, 1'}
               onChange={e => update('warning_schedule', e.target.value.split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v)))}
             />
+            <p className="mt-1 text-xs text-gray-500">You'll receive reminders at each of these thresholds before the deadline. Notifications are sent to the channels configured in Admin Notifications below.</p>
           </div>
         </Card>
       </Section>
