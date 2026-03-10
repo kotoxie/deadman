@@ -23,7 +23,7 @@ if (!isDev) {
 }
 
 const config = Object.freeze({
-  version: '0.2.7',
+  version: '0.2.8',
   repoUrl: 'https://github.com/kotoxie/deadman',
   port: parseInt(process.env.PORT || '6680', 10),
   nodeEnv,
