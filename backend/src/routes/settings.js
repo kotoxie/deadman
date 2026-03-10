@@ -14,6 +14,8 @@ const VALID_KEYS = [
   'telegram_bot_token',
   'admin_notify_email', 'admin_notify_telegram_chat_id',
   'warning_email_subject', 'warning_email_body', 'warning_telegram_template',
+  'login_max_attempts', 'login_cooloff_hours',
+  'notify_ip_block', 'notify_excessive_failures', 'login_excessive_threshold',
 ];
 
 router.get('/', (req, res) => {

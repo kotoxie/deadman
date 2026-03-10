@@ -21,8 +21,8 @@ export default function LoginPage() {
       const ok = await login(password);
       if (ok) navigate('/dashboard');
       else setError('Invalid password');
-    } catch {
-      setError('Invalid password');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Invalid password');
     } finally {
       setLoading(false);
     }

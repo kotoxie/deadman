@@ -97,6 +97,11 @@ function formatContent(name, type, content) {
   return body;
 }
 
+export async function sendAdminNotificationEmail(to, subject, body) {
+  if (!transporter) return;
+  await transporter.sendMail({ from: getFrom(), to, subject, text: body });
+}
+
 export function isConfigured() {
   return transporter !== null;
 }

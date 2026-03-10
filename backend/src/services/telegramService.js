@@ -76,6 +76,11 @@ function escapeHtml(text) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+export async function sendAdminNotificationTelegram(chatId, message) {
+  if (!bot) return;
+  await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
+}
+
 export function isConfigured() {
   return bot !== null;
 }

@@ -5,7 +5,7 @@ import Button from '../components/ui/Button.jsx';
 import Input from '../components/ui/Input.jsx';
 import ChangePasswordModal from '../components/features/ChangePasswordModal.jsx';
 import toast from 'react-hot-toast';
-import { Save, Send, KeyRound, Clock, Mail, MessageCircle, Bell, FileText, ChevronDown, ChevronRight } from 'lucide-react';
+import { Save, Send, KeyRound, Clock, Mail, MessageCircle, Bell, FileText, Shield, ChevronDown, ChevronRight } from 'lucide-react';
 
 function Section({ title, icon: Icon, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -53,9 +53,9 @@ export default function SettingsPage() {
     <div className="space-y-4 max-w-2xl">
       <h2 className="text-2xl font-bold text-white">Settings</h2>
 
-      {/* Security */}
-      <Section title="Security" icon={KeyRound} defaultOpen>
-        <Card className="space-y-3">
+      {/* Login & Security */}
+      <Section title="Login & Security" icon={Shield} defaultOpen>
+        <Card className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-300">Application Password</p>
@@ -64,6 +64,85 @@ export default function SettingsPage() {
             <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(true)}>
               <KeyRound size={14} /> Change Password
             </Button>
+          </div>
+
+          <hr className="border-border" />
+
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Login Protection</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Input
+                label="Max Failed Attempts"
+                type="number"
+                min={2}
+                max={50}
+                value={settings.login_max_attempts || '5'}
+                onChange={e => update('login_max_attempts', e.target.value)}
+              />
+              <p className="mt-1 text-xs text-gray-500">Failed attempts before IP is blocked</p>
+            </div>
+            <div>
+              <Input
+                label="Cooloff Timer (hours)"
+                type="number"
+                min={0.25}
+                step={0.25}
+                value={settings.login_cooloff_hours || '4'}
+                onChange={e => update('login_cooloff_hours', e.target.value)}
+              />
+              <p className="mt-1 text-xs text-gray-500">How long a blocked IP stays banned</p>
+            </div>
+          </div>
+
+          <hr className="border-border" />
+
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Security Notifications</p>
+          <p className="text-xs text-gray-500">Requires Admin Notification channels to be configured below.</p>
+
+          {/* Notify on IP Block */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-300">Notify on IP Block</p>
+              <p className="text-xs text-gray-500">Send alert when an IP is banned for failed logins</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => update('notify_ip_block', settings.notify_ip_block === 'true' ? 'false' : 'true')}
+              className={`relative w-10 h-5 rounded-full transition-colors ${settings.notify_ip_block === 'true' ? 'bg-brand' : 'bg-gray-600'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.notify_ip_block === 'true' ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+
+          {/* Notify on Excessive Failures */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-300">Notify on Excessive Login Failures</p>
+                <p className="text-xs text-gray-500">Alert when many failures occur across multiple IPs (possible brute-force)</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => update('notify_excessive_failures', settings.notify_excessive_failures === 'true' ? 'false' : 'true')}
+                className={`relative w-10 h-5 rounded-full transition-colors ${settings.notify_excessive_failures === 'true' ? 'bg-brand' : 'bg-gray-600'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.notify_excessive_failures === 'true' ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+            {settings.notify_excessive_failures === 'true' && (
+              <div className="pl-1 border-l-2 border-brand/20 ml-1">
+                <div className="pl-3">
+                  <Input
+                    label="Failure Threshold (per hour)"
+                    type="number"
+                    min={5}
+                    value={settings.login_excessive_threshold || '20'}
+                    onChange={e => update('login_excessive_threshold', e.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Total failed logins across all IPs within 1 hour before notification triggers</p>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
       </Section>

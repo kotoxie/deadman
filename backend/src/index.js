@@ -78,14 +78,7 @@ async function main() {
   }));
 
   // ─── Rate Limiters ──────────────────────────────────────────
-  const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,  // 15-minute window
-    max: 10,                    // 10 attempts per window
-    message: { error: 'Too many login attempts. Try again in 15 minutes.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-
+  // Login rate limiting is handled by custom IP blocking in auth.js
   const apiLimiter = rateLimit({
     windowMs: 60 * 1000,       // 1-minute window
     max: 120,                   // 120 requests per minute
@@ -101,8 +94,8 @@ async function main() {
     repoUrl: config.repoUrl,
   }));
 
-  // Auth (public, rate-limited)
-  app.post('/api/auth/login', loginLimiter, login);
+  // Auth (public — login has custom IP blocking in auth.js)
+  app.post('/api/auth/login', login);
   app.post('/api/auth/logout', logout);
   app.get('/api/auth/check', checkAuth);
   app.post('/api/auth/change-password', requireAuth, changePassword);
