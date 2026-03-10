@@ -111,4 +111,15 @@ export function initializeSchema(db) {
     db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
     db.exec('ALTER TABLE users ADD COLUMN password_changed INTEGER NOT NULL DEFAULT 0');
   }
+
+  // Migration: ip_blocks table for persistent IP rate limiting
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ip_blocks (
+      ip TEXT PRIMARY KEY,
+      failures INTEGER NOT NULL DEFAULT 0,
+      first_failure_at TEXT NOT NULL DEFAULT (datetime('now')),
+      blocked_at TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
 }

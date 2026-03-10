@@ -6,6 +6,7 @@ import * as User from '../models/User.js';
 import * as Setting from '../models/Setting.js';
 import { sendAdminNotificationEmail, isConfigured as emailConfigured } from '../services/emailService.js';
 import { sendAdminNotificationTelegram, isConfigured as telegramConfigured } from '../services/telegramService.js';
+import * as IpBlock from '../models/IpBlock.js';
 
 export function requireAuth(req, res, next) {
   if (req.session && req.session.authenticated) {
@@ -51,8 +52,7 @@ function safeCompare(a, b) {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
-// ─── IP Rate Limiting ───────────────────────────────────────────
-const ipRecords = new Map(); // ip -> { failures, firstFailure, blockedAt }
+// ─── IP Rate Limiting (DB-backed, survives restarts) ────────────
 let lastExcessiveNotification = 0;
 
 function getLoginConfig() {
@@ -63,64 +63,6 @@ function getLoginConfig() {
     notifyExcessive: Setting.get('notify_excessive_failures') === 'true',
     excessiveThreshold: parseInt(Setting.get('login_excessive_threshold')) || 20,
   };
-}
-
-function isIpBlocked(ip, cooloffMs) {
-  const rec = ipRecords.get(ip);
-  if (!rec || !rec.blockedAt) return false;
-  if (Date.now() - rec.blockedAt >= cooloffMs) {
-    // Cooloff expired — unblock
-    ipRecords.delete(ip);
-    logger.info(`IP ${ip} unblocked (cooloff expired)`);
-    return false;
-  }
-  return true;
-}
-
-function remainingCooloffMinutes(ip, cooloffMs) {
-  const rec = ipRecords.get(ip);
-  if (!rec || !rec.blockedAt) return 0;
-  return Math.max(1, Math.ceil((cooloffMs - (Date.now() - rec.blockedAt)) / 60000));
-}
-
-function recordFailure(ip, cfg) {
-  let rec = ipRecords.get(ip);
-  if (!rec) {
-    rec = { failures: 0, firstFailure: Date.now(), blockedAt: null };
-    ipRecords.set(ip, rec);
-  }
-  rec.failures++;
-
-  // Block if threshold reached
-  if (rec.failures >= cfg.maxAttempts && !rec.blockedAt) {
-    rec.blockedAt = Date.now();
-    return true; // newly blocked
-  }
-  return false;
-}
-
-function cleanupStaleRecords(cooloffMs) {
-  const now = Date.now();
-  for (const [ip, rec] of ipRecords) {
-    if (rec.blockedAt && now - rec.blockedAt >= cooloffMs) {
-      ipRecords.delete(ip);
-    } else if (!rec.blockedAt && rec.firstFailure && now - rec.firstFailure > cooloffMs) {
-      ipRecords.delete(ip);
-    }
-  }
-}
-
-function getGlobalFailureStats() {
-  const oneHourAgo = Date.now() - 3600000;
-  let totalFailures = 0;
-  let uniqueIps = 0;
-  for (const [, rec] of ipRecords) {
-    if (rec.firstFailure && rec.firstFailure > oneHourAgo) {
-      totalFailures += rec.failures;
-      uniqueIps++;
-    }
-  }
-  return { totalFailures, uniqueIps };
 }
 
 async function notifyAdmin(subject, emailBody, telegramMsg) {
@@ -142,14 +84,13 @@ export function login(req, res) {
   const { password } = req.body;
   const ip = req.ip;
   const cfg = getLoginConfig();
-  const cooloffMs = cfg.cooloffHours * 3600000;
 
   // Lazy cleanup of stale records
-  cleanupStaleRecords(cooloffMs);
+  IpBlock.cleanup(cfg.cooloffHours);
 
-  // Check if IP is blocked
-  if (isIpBlocked(ip, cooloffMs)) {
-    const minutesLeft = remainingCooloffMinutes(ip, cooloffMs);
+  // Check if IP is blocked (persisted in DB — survives restarts)
+  if (IpBlock.isBlocked(ip, cfg.cooloffHours)) {
+    const minutesLeft = IpBlock.remainingMinutes(ip, cfg.cooloffHours);
     logger.warn(`Blocked login attempt from banned IP: ${ip}`);
     AuditLog.log(`Login blocked: IP banned (${minutesLeft}m remaining)`, 'auth', 'warning', JSON.stringify({ ip, minutesLeft }), ip);
     return res.status(429).json({
@@ -177,30 +118,35 @@ export function login(req, res) {
     logger.warn(`Failed login attempt: invalid password (IP: ${ip})`);
     AuditLog.log('Login failed: invalid password', 'auth', 'warning', null, ip);
 
-    // Record failure and check if newly blocked
-    const newlyBlocked = recordFailure(ip, cfg);
+    // Record failure in DB
+    IpBlock.recordFailure(ip);
+    const failures = IpBlock.getFailures(ip);
 
-    if (newlyBlocked) {
-      const rec = ipRecords.get(ip);
-      AuditLog.log(
-        `IP blocked after ${rec.failures} failed login attempts`,
-        'auth', 'critical',
-        JSON.stringify({ ip, failures: rec.failures, cooloffHours: cfg.cooloffHours }),
-        ip
-      );
-      logger.warn(`IP ${ip} blocked after ${rec.failures} failed attempts`);
+    // Block if threshold reached
+    if (failures >= cfg.maxAttempts) {
+      const rec = IpBlock.get(ip);
+      if (!rec.blocked_at) {
+        IpBlock.block(ip);
+        AuditLog.log(
+          `IP blocked after ${failures} failed login attempts`,
+          'auth', 'critical',
+          JSON.stringify({ ip, failures, cooloffHours: cfg.cooloffHours }),
+          ip
+        );
+        logger.warn(`IP ${ip} blocked after ${failures} failed attempts`);
 
-      // Admin notification for IP block
-      if (cfg.notifyBlock) {
-        notifyAdmin(
-          `[Dead Man's Switch] IP Blocked: ${ip}`,
-          `An IP address has been blocked due to excessive failed login attempts.\n\nIP: ${ip}\nFailed attempts: ${rec.failures}\nCooloff: ${cfg.cooloffHours} hours`,
-          `🚫 <b>IP Blocked</b>\n\nIP <code>${ip}</code> blocked after ${rec.failures} failed login attempts.\nCooloff: ${cfg.cooloffHours}h`
-        ).catch(e => logger.error('Block notification error:', e));
+        // Admin notification for IP block
+        if (cfg.notifyBlock) {
+          notifyAdmin(
+            `[Dead Man's Switch] IP Blocked: ${ip}`,
+            `An IP address has been blocked due to excessive failed login attempts.\n\nIP: ${ip}\nFailed attempts: ${failures}\nCooloff: ${cfg.cooloffHours} hours`,
+            `🚫 <b>IP Blocked</b>\n\nIP <code>${ip}</code> blocked after ${failures} failed login attempts.\nCooloff: ${cfg.cooloffHours}h`
+          ).catch(e => logger.error('Block notification error:', e));
+        }
       }
 
       // Return blocked message immediately
-      const minutesLeft = remainingCooloffMinutes(ip, cooloffMs);
+      const minutesLeft = IpBlock.remainingMinutes(ip, cfg.cooloffHours);
       return res.status(429).json({
         error: `IP address blocked due to too many failed attempts. Try again in ${minutesLeft} minutes.`,
         blocked: true,
@@ -210,7 +156,7 @@ export function login(req, res) {
 
     // Check for excessive failures across all IPs
     if (cfg.notifyExcessive) {
-      const { totalFailures, uniqueIps } = getGlobalFailureStats();
+      const { totalFailures, uniqueIps } = IpBlock.getGlobalFailureStats(1);
       if (totalFailures >= cfg.excessiveThreshold) {
         // Only notify once per hour
         if (Date.now() - lastExcessiveNotification > 3600000) {
@@ -234,7 +180,7 @@ export function login(req, res) {
   }
 
   // Successful login — clear IP record
-  ipRecords.delete(ip);
+  IpBlock.remove(ip);
   req.session.authenticated = true;
   logger.info(`Successful login (IP: ${ip})`);
   AuditLog.log('Login successful', 'auth', 'info', null, ip);
