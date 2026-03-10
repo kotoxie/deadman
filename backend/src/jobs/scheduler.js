@@ -14,8 +14,8 @@ export function startScheduler() {
     checkDeadline();
   });
 
-  // Send warnings every 15 minutes
-  cron.schedule('*/15 * * * *', () => {
+  // Send warnings every minute (matches deadline check for precise timing)
+  cron.schedule('* * * * *', () => {
     checkWarnings();
   });
 
