@@ -36,7 +36,6 @@ services:
     volumes:
       - ./deadman-data:/app/data
     environment:
-      - NODE_ENV=production
       - DATA_DIR=/app/data
       - MASTER_PASSWORD=change-me-to-something-strong
       - SESSION_SECRET=generate-a-random-64-char-string
@@ -65,7 +64,6 @@ mkdir deadman-switch && cd deadman-switch
 ```env
 # Server
 PORT=6680
-NODE_ENV=production
 
 # Authentication - CHANGE THIS (app refuses to start with defaults in production)
 MASTER_PASSWORD=your_strong_master_password_here
@@ -104,7 +102,6 @@ services:
     env_file:
       - .env
     environment:
-      - NODE_ENV=production
       - DATA_DIR=/app/data
 ```
 
@@ -177,7 +174,7 @@ Default development credentials:
 | `SMTP_SECURE` | No | `false` | Set to `true` for port 465 (SSL) |
 | `TELEGRAM_BOT_TOKEN` | No | -- | Telegram bot token from @BotFather |
 
-> **Production safety:** The app will refuse to start in `NODE_ENV=production` if `MASTER_PASSWORD`, `SESSION_SECRET`, or `DB_ENCRYPTION_KEY` are missing or still set to default values.
+> **Production safety:** The app will refuse to start in production if `MASTER_PASSWORD`, `SESSION_SECRET`, or `DB_ENCRYPTION_KEY` are missing or still set to default values.
 
 SMTP and Telegram settings can also be configured through the Settings page in the UI. Values set in the UI are stored encrypted in the database and take precedence.
 
