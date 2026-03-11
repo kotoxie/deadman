@@ -51,6 +51,10 @@ export function markPasswordChanged() {
   getDb().prepare("UPDATE users SET password_changed = 1, updated_at = datetime('now') WHERE id = 1").run();
 }
 
+export function incrementSessionVersion() {
+  getDb().prepare("UPDATE users SET session_version = COALESCE(session_version, 0) + 1, updated_at = datetime('now') WHERE id = 1").run();
+}
+
 export function togglePause(paused) {
   const user = getUser();
 

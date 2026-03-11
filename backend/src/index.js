@@ -25,8 +25,6 @@ import settingsRoutes from './routes/settings.js';
 import auditLogRoutes from './routes/auditLogs.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT_DIR = path.resolve(__dirname, '../..');
-const FRONTEND_DIR = path.join(ROOT_DIR, 'frontend');
 
 async function main() {
   // Initialize database (async for sql.js WASM init)
@@ -42,9 +40,9 @@ async function main() {
   // Trust proxy for correct IP detection behind reverse proxy / Docker
   app.set('trust proxy', 1);
 
-  // Security headers — CSP configured for production, relaxed for dev
+  // Security headers
   app.use(helmet({
-    contentSecurityPolicy: config.isDev ? false : {
+    contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
@@ -57,7 +55,7 @@ async function main() {
     // Disable HSTS when not using HTTPS to prevent browsers from force-upgrading to https://
     strictTransportSecurity: config.secureCookies ? undefined : false,
   }));
-  app.use(cors({ origin: config.isDev ? true : false, credentials: true }));
+  app.use(cors({ origin: false, credentials: true }));
 
   // Body parsing
   app.use(express.json({ limit: '10mb' }));
@@ -113,26 +111,13 @@ async function main() {
   // 404 for unknown API routes
   app.all('/api/*', (req, res) => res.status(404).json({ error: 'Not found' }));
 
-  // ─── Frontend serving ─────────────────────────────────────────
-  if (config.isDev) {
-    // Development: Vite dev server as middleware (HMR, instant reload)
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      root: FRONTEND_DIR,
-      server: { middlewareMode: true, hmr: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-    logger.info('Vite dev server attached (HMR enabled)');
+  // ─── Frontend serving (pre-built static files) ──────────────
+  const publicDir = path.join(__dirname, '../public');
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir));
+    app.get('*', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
   } else {
-    // Production: serve pre-built static files
-    const publicDir = path.join(__dirname, '../public');
-    if (fs.existsSync(publicDir)) {
-      app.use(express.static(publicDir));
-      app.get('*', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
-    } else {
-      logger.warn('No public/ directory found — run "npm run build" first');
-    }
+    logger.warn('No public/ directory found — run "npm run build" first');
   }
 
   // Error handler
@@ -143,8 +128,7 @@ async function main() {
 
   // Start server
   app.listen(config.port, () => {
-    logger.info(`Dead Man's Switch running on http://localhost:${config.port}`);
-    logger.info(`Environment: ${config.nodeEnv}`);
+    logger.info(`Dead Man's Switch v${config.version} running on port ${config.port}`);
   });
 }
 

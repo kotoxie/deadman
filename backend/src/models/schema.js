@@ -112,6 +112,13 @@ export function initializeSchema(db) {
     db.exec('ALTER TABLE users ADD COLUMN password_changed INTEGER NOT NULL DEFAULT 0');
   }
 
+  // Migration: session_version for session invalidation on password change
+  try {
+    db.prepare('SELECT session_version FROM users LIMIT 1').get();
+  } catch {
+    db.exec('ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0');
+  }
+
   // Migration: ip_blocks table for persistent IP rate limiting
   db.exec(`
     CREATE TABLE IF NOT EXISTS ip_blocks (

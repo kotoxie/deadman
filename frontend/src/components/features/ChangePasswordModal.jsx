@@ -9,6 +9,7 @@ import { KeyRound } from 'lucide-react';
 
 export default function ChangePasswordModal({ open, onClose, isFirstLogin = false }) {
   const { clearPasswordChangeRequired } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -16,7 +17,8 @@ export default function ChangePasswordModal({ open, onClose, isFirstLogin = fals
 
   const validate = () => {
     const errs = {};
-    if (!newPassword) errs.newPassword = 'Password is required';
+    if (!currentPassword) errs.currentPassword = 'Current password is required';
+    if (!newPassword) errs.newPassword = 'New password is required';
     else if (newPassword.length < 8) errs.newPassword = 'Must be at least 8 characters';
     if (newPassword !== confirmPassword) errs.confirmPassword = 'Passwords do not match';
     setErrors(errs);
@@ -29,9 +31,10 @@ export default function ChangePasswordModal({ open, onClose, isFirstLogin = fals
 
     setSaving(true);
     try {
-      await changePassword(newPassword);
+      await changePassword(currentPassword, newPassword);
       clearPasswordChangeRequired();
       toast.success('Password changed successfully');
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setErrors({});
@@ -56,6 +59,7 @@ export default function ChangePasswordModal({ open, onClose, isFirstLogin = fals
 
   const handleClose = () => {
     if (!isFirstLogin) {
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setErrors({});
@@ -77,13 +81,23 @@ export default function ChangePasswordModal({ open, onClose, isFirstLogin = fals
         )}
 
         <Input
+          label="Current Password"
+          type="password"
+          value={currentPassword}
+          onChange={e => { setCurrentPassword(e.target.value); setErrors(er => ({ ...er, currentPassword: undefined })); }}
+          error={errors.currentPassword}
+          placeholder="Enter your current password"
+          autoComplete="off"
+          autoFocus
+        />
+
+        <Input
           label="New Password"
           type="password"
           value={newPassword}
           onChange={e => { setNewPassword(e.target.value); setErrors(er => ({ ...er, newPassword: undefined })); }}
           error={errors.newPassword}
           placeholder="Minimum 8 characters"
-          autoFocus
         />
 
         <Input

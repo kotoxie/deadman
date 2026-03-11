@@ -10,6 +10,13 @@ import * as IpBlock from '../models/IpBlock.js';
 
 export function requireAuth(req, res, next) {
   if (req.session && req.session.authenticated) {
+    // Verify session version — password change invalidates all other sessions
+    const user = User.getUser();
+    const currentVersion = user.session_version || 0;
+    if (req.session.sessionVersion !== undefined && req.session.sessionVersion !== currentVersion) {
+      req.session.destroy(() => {});
+      return res.status(401).json({ error: 'Session expired. Please log in again.' });
+    }
     return next();
   }
   return res.status(401).json({ error: 'Authentication required' });
@@ -181,10 +188,22 @@ export function login(req, res) {
 
   // Successful login — clear IP record
   IpBlock.remove(ip);
-  req.session.authenticated = true;
-  logger.info(`Successful login (IP: ${ip})`);
-  AuditLog.log('Login successful', 'auth', 'info', null, ip);
-  res.json({ success: true });
+
+  // Regenerate session to prevent session fixation
+  const oldSession = req.session;
+  req.session.regenerate((err) => {
+    if (err) {
+      logger.error('Session regeneration failed:', err);
+      return res.status(500).json({ error: 'Login failed' });
+    }
+    req.session.authenticated = true;
+    // Store session version for invalidation on password change
+    const user = User.getUser();
+    req.session.sessionVersion = user.session_version || 0;
+    logger.info(`Successful login (IP: ${ip})`);
+    AuditLog.log('Login successful', 'auth', 'info', null, ip);
+    res.json({ success: true });
+  });
 }
 
 // ─── Logout ─────────────────────────────────────────────────────
@@ -210,8 +229,12 @@ export function checkAuth(req, res) {
 
 // ─── Change Password ────────────────────────────────────────────
 export function changePassword(req, res) {
-  const { newPassword } = req.body;
+  const { currentPassword, newPassword } = req.body;
 
+  // Always require current password verification
+  if (!currentPassword || typeof currentPassword !== 'string') {
+    return res.status(400).json({ error: 'Current password is required' });
+  }
   if (!newPassword || typeof newPassword !== 'string') {
     return res.status(400).json({ error: 'New password is required' });
   }
@@ -219,11 +242,30 @@ export function changePassword(req, res) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
 
+  // Verify current password — check DB hash first, fall back to env var
+  const user = User.getUser();
+  let currentValid = false;
+  if (user && user.password_hash) {
+    currentValid = verifyPassword(currentPassword, user.password_hash);
+  } else {
+    currentValid = safeCompare(currentPassword, config.masterPassword);
+  }
+  if (!currentValid) {
+    AuditLog.log('Password change failed: wrong current password', 'auth', 'warning', null, req.ip);
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+
+  // Set new password and increment session version (invalidates all other sessions)
   const hashed = hashPassword(newPassword);
   User.setPassword(hashed);
+  User.incrementSessionVersion();
 
-  AuditLog.log('Password changed', 'auth', 'warning', null, req.ip);
-  logger.info(`Password changed (IP: ${req.ip})`);
+  // Update current session with new version so this session stays valid
+  const updatedUser = User.getUser();
+  req.session.sessionVersion = updatedUser.session_version;
+
+  AuditLog.log('Password changed (all other sessions invalidated)', 'auth', 'warning', null, req.ip);
+  logger.info(`Password changed, sessions invalidated (IP: ${req.ip})`);
   res.json({ success: true });
 }
 
