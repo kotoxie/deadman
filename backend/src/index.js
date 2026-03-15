@@ -38,9 +38,6 @@ async function main() {
   // Create Express app
   const app = express();
 
-  // Trust proxy for correct IP detection behind reverse proxy / Docker
-  app.set('trust proxy', 1);
-
   // Security headers
   app.use(helmet({
     contentSecurityPolicy: {

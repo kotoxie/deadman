@@ -55,15 +55,6 @@ function safeCompare(a, b) {
   return crypto.timingSafeEqual(hashA, hashB);
 }
 
-// ─── IP helpers ─────────────────────────────────────────────────
-// Use the raw TCP socket address for rate-limiting so an attacker cannot
-// bypass the IP block by spoofing X-Forwarded-For headers.
-// Normalize IPv6-mapped IPv4 addresses (::ffff:1.2.3.4 → 1.2.3.4).
-function getClientIp(req) {
-  const addr = req.socket?.remoteAddress || '';
-  return addr.startsWith('::ffff:') ? addr.slice(7) : addr;
-}
-
 // ─── IP Rate Limiting (DB-backed, survives restarts) ────────────
 let lastExcessiveNotification = 0;
 
@@ -94,7 +85,7 @@ async function notifyAdmin(subject, emailBody, telegramMsg) {
 // ─── Login ──────────────────────────────────────────────────────
 export function login(req, res) {
   const { password } = req.body;
-  const ip = getClientIp(req);
+  const ip = req.ip;
   const cfg = getLoginConfig();
 
   // Lazy cleanup of stale records
