@@ -31,9 +31,14 @@ export default function SettingsPage() {
   const [testEmailTo, setTestEmailTo] = useState('');
   const [testTgChatId, setTestTgChatId] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [warningScheduleText, setWarningScheduleText] = useState('');
 
   useEffect(() => {
-    getSettings().then(s => { setSettings(s); setLoading(false); }).catch(() => toast.error('Failed to load settings'));
+    getSettings().then(s => {
+      setSettings(s);
+      setWarningScheduleText(Array.isArray(s.warning_schedule) ? s.warning_schedule.join(', ') : '72, 48, 24, 12, 6, 1');
+      setLoading(false);
+    }).catch(() => toast.error('Failed to load settings'));
   }, []);
 
   const handleSave = async () => {
@@ -176,8 +181,13 @@ export default function SettingsPage() {
             </label>
             <input
               className="w-full rounded-lg border border-border bg-surface-light px-3 py-2 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
-              value={Array.isArray(settings.warning_schedule) ? settings.warning_schedule.join(', ') : '72, 48, 24, 12, 6, 1'}
-              onChange={e => update('warning_schedule', e.target.value.split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v)))}
+              value={warningScheduleText}
+              onChange={e => setWarningScheduleText(e.target.value)}
+              onBlur={e => {
+                const parsed = e.target.value.split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v));
+                update('warning_schedule', parsed);
+              }}
+              placeholder="72, 48, 24, 12, 6, 1"
             />
             <p className="mt-1 text-xs text-gray-500">You'll receive reminders at each of these thresholds before the deadline. Notifications are sent to the channels configured in Admin Notifications below.</p>
           </div>

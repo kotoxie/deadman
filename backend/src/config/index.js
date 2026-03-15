@@ -30,7 +30,7 @@ if (process.env.DB_ENCRYPTION_KEY.length < 32) {
 }
 
 const config = Object.freeze({
-  version: '0.3.3',
+  version: '0.3.4',
   repoUrl: 'https://github.com/kotoxie/deadman',
   port: parseInt(process.env.PORT || '6680', 10),
   logLevel: process.env.LOG_LEVEL || 'info',
