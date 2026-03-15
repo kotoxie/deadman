@@ -15,6 +15,7 @@ export default function RecipientFormPage() {
   const [email, setEmail] = useState('');
   const [telegramChatId, setTelegramChatId] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [autoAssign, setAutoAssign] = useState(false);
   const [vaultItems, setVaultItems] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -27,6 +28,7 @@ export default function RecipientFormPage() {
         setEmail(r.email || '');
         setTelegramChatId(r.telegram_chat_id || '');
         setWebhookUrl(r.webhook_url || '');
+        setAutoAssign(!!r.auto_assign);
         setSelectedItems(r.items?.map(i => i.id) || []);
       }).catch(() => toast.error('Failed to load recipient'));
     }
@@ -47,10 +49,10 @@ export default function RecipientFormPage() {
     try {
       let recipientId;
       if (isEdit) {
-        await updateRecipient(id, { name, email, telegramChatId, webhookUrl });
+        await updateRecipient(id, { name, email, telegramChatId, webhookUrl, autoAssign });
         recipientId = parseInt(id);
       } else {
-        const r = await createRecipient({ name, email, telegramChatId, webhookUrl });
+        const r = await createRecipient({ name, email, telegramChatId, webhookUrl, autoAssign });
         recipientId = r.id;
       }
 
@@ -76,6 +78,21 @@ export default function RecipientFormPage() {
           <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="john@example.com" />
           <Input label="Telegram Chat ID" value={telegramChatId} onChange={e => setTelegramChatId(e.target.value)} placeholder="123456789" />
           <Input label="Webhook URL" value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} placeholder="https://hooks.example.com/notify" />
+        </Card>
+
+        <Card>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoAssign}
+              onChange={e => setAutoAssign(e.target.checked)}
+              className="rounded border-gray-600"
+            />
+            <div>
+              <span className="text-gray-200 text-sm">Auto-assign future vault items</span>
+              <p className="text-xs text-gray-500">New vault items will be automatically assigned to this recipient</p>
+            </div>
+          </label>
         </Card>
 
         {vaultItems.length > 0 && (

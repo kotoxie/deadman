@@ -16,13 +16,13 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { name, email, telegramChatId, webhookUrl } = req.body;
+  const { name, email, telegramChatId, webhookUrl, autoAssign } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required' });
   if (!email && !telegramChatId && !webhookUrl) {
     return res.status(400).json({ error: 'At least one delivery method is required' });
   }
 
-  const recipient = Recipient.create({ name, email, telegramChatId, webhookUrl });
+  const recipient = Recipient.create({ name, email, telegramChatId, webhookUrl, autoAssign });
   AuditLog.log(`Recipient created: "${name}"`, 'recipient', 'info', JSON.stringify({ id: recipient.id }), req.ip);
   res.status(201).json(recipient);
 });
@@ -35,7 +35,7 @@ router.put('/:id', (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Recipient not found' });
 
   // Whitelist allowed fields to prevent mass assignment
-  const allowed = ['name', 'email', 'telegramChatId', 'webhookUrl'];
+  const allowed = ['name', 'email', 'telegramChatId', 'webhookUrl', 'autoAssign'];
   const updates = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];

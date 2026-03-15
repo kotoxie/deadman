@@ -25,16 +25,16 @@ export function findById(id) {
   return recipient;
 }
 
-export function create({ name, email, telegramChatId, webhookUrl }) {
+export function create({ name, email, telegramChatId, webhookUrl, autoAssign }) {
   const result = getDb().prepare(`
-    INSERT INTO recipients (user_id, name, email, telegram_chat_id, webhook_url)
-    VALUES (1, ?, ?, ?, ?)
-  `).run(name, email || null, telegramChatId || null, webhookUrl || null);
+    INSERT INTO recipients (user_id, name, email, telegram_chat_id, webhook_url, auto_assign)
+    VALUES (1, ?, ?, ?, ?, ?)
+  `).run(name, email || null, telegramChatId || null, webhookUrl || null, autoAssign ? 1 : 0);
 
   return findById(result.lastInsertRowid);
 }
 
-export function update(id, { name, email, telegramChatId, webhookUrl }) {
+export function update(id, { name, email, telegramChatId, webhookUrl, autoAssign }) {
   const fields = [];
   const values = [];
 
@@ -42,6 +42,7 @@ export function update(id, { name, email, telegramChatId, webhookUrl }) {
   if (email !== undefined) { fields.push('email = ?'); values.push(email || null); }
   if (telegramChatId !== undefined) { fields.push('telegram_chat_id = ?'); values.push(telegramChatId || null); }
   if (webhookUrl !== undefined) { fields.push('webhook_url = ?'); values.push(webhookUrl || null); }
+  if (autoAssign !== undefined) { fields.push('auto_assign = ?'); values.push(autoAssign ? 1 : 0); }
 
   if (fields.length === 0) return findById(id);
 
@@ -69,6 +70,13 @@ export function assignItems(recipientId, itemIds) {
   })();
 
   return findById(recipientId);
+}
+
+export function addItemToAutoAssignRecipients(itemId) {
+  const db = getDb();
+  const recipients = db.prepare('SELECT id FROM recipients WHERE auto_assign = 1 AND user_id = 1').all();
+  const ins = db.prepare('INSERT OR IGNORE INTO recipient_items (recipient_id, vault_item_id) VALUES (?, ?)');
+  for (const r of recipients) ins.run(r.id, itemId);
 }
 
 export function findAllWithItems() {

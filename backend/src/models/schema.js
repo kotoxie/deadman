@@ -129,4 +129,11 @@ export function initializeSchema(db) {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Migration: auto_assign flag on recipients
+  try {
+    db.prepare('SELECT auto_assign FROM recipients LIMIT 1').get();
+  } catch {
+    db.exec('ALTER TABLE recipients ADD COLUMN auto_assign INTEGER NOT NULL DEFAULT 0');
+  }
 }

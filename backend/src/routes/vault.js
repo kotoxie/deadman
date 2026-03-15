@@ -4,6 +4,7 @@ import * as VaultItem from '../models/VaultItem.js';
 import { encrypt, decrypt, encryptBuffer, decryptBuffer, getAppEncryptionKey } from '../services/crypto.js';
 import config from '../config/index.js';
 import * as AuditLog from '../models/AuditLog.js';
+import { addItemToAutoAssignRecipients } from '../models/Recipient.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -88,6 +89,7 @@ router.post('/', upload.single('file'), (req, res) => {
     fileSize,
   });
 
+  addItemToAutoAssignRecipients(item.id);
   AuditLog.log(`Vault item created: "${name}"`, 'vault', 'info', JSON.stringify({ id: item.id, type }), req.ip);
   res.status(201).json({ id: item.id, type: item.type, name: item.name, created_at: item.created_at });
 });
