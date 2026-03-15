@@ -22,7 +22,8 @@ import checkinRoutes from './routes/checkin.js';
 import vaultRoutes from './routes/vault.js';
 import recipientRoutes from './routes/recipients.js';
 import deliveryLogRoutes from './routes/deliveryLogs.js';
-import settingsRoutes from './routes/settings.js';
+import createSettingsRouter from './routes/settings.js';
+import * as Setting from './models/Setting.js';
 import auditLogRoutes from './routes/auditLogs.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -37,6 +38,12 @@ async function main() {
 
   // Create Express app
   const app = express();
+
+  // Apply stored trust proxy setting (configurable via Settings → Login & Security)
+  const storedTrustProxy = Setting.get('trust_proxy');
+  if (storedTrustProxy && storedTrustProxy !== 'false') {
+    app.set('trust proxy', storedTrustProxy);
+  }
 
   // Security headers
   app.use(helmet({
@@ -128,7 +135,7 @@ async function main() {
   app.use('/api/vault', requireAuth, apiLimiter, vaultRoutes);
   app.use('/api/recipients', requireAuth, apiLimiter, recipientRoutes);
   app.use('/api/delivery-logs', requireAuth, apiLimiter, deliveryLogRoutes);
-  app.use('/api/settings', requireAuth, apiLimiter, settingsRoutes);
+  app.use('/api/settings', requireAuth, apiLimiter, createSettingsRouter(app));
   app.use('/api/audit-logs', requireAuth, apiLimiter, auditLogRoutes);
 
   // 404 for unknown API routes

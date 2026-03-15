@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, KeyRound, ShieldCheck, Lock } from 'lucide-react';
+import { Save, KeyRound, ShieldCheck, Lock, Network } from 'lucide-react';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import Input from '../components/ui/Input.jsx';
@@ -123,6 +123,27 @@ export default function SettingsSecurityPage() {
               </p>
             </div>
           )}
+        </div>
+      </Card>
+
+      {/* Reverse Proxy */}
+      <Card className="space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Network size={14} className="text-gray-400" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Reverse Proxy</span>
+        </div>
+        <div>
+          <Input
+            label="Trusted Proxy"
+            placeholder="e.g. uniquelocal"
+            value={settings.trust_proxy || ''}
+            onChange={e => update('trust_proxy', e.target.value)}
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Set if the app is behind a reverse proxy (Nginx, Pangolin, Cloudflare Tunnel, etc.).
+            Use <code className="text-brand">uniquelocal</code> for Docker, or enter the proxy's specific IP.
+            Leave empty for direct deployments. Changes apply immediately without restart.
+          </p>
         </div>
       </Card>
 

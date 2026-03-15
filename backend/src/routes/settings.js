@@ -5,8 +5,6 @@ import { initializeEmailService, sendTestEmail } from '../services/emailService.
 import { initializeTelegram, sendTestTelegram } from '../services/telegramService.js';
 import * as AuditLog from '../models/AuditLog.js';
 
-const router = Router();
-
 const SENSITIVE_KEYS = ['smtp_pass', 'telegram_bot_token'];
 const SENSITIVE_MASK = '********';
 const VALID_KEYS = [
@@ -16,7 +14,12 @@ const VALID_KEYS = [
   'warning_email_subject', 'warning_email_body', 'warning_telegram_template',
   'login_max_attempts', 'login_cooloff_hours',
   'notify_ip_block', 'notify_excessive_failures', 'login_excessive_threshold',
+  'trust_proxy',
 ];
+
+// Factory — receives `app` so trust_proxy changes take effect without a restart.
+export default function createSettingsRouter(app) {
+const router = Router();
 
 router.get('/', (req, res) => {
   const user = User.getUser();
@@ -94,6 +97,10 @@ router.put('/', (req, res) => {
   if (settingUpdates.telegram_bot_token) {
     initializeTelegram();
   }
+  if ('trust_proxy' in settingUpdates) {
+    const val = settingUpdates.trust_proxy;
+    app.set('trust proxy', val && val !== 'false' ? val : false);
+  }
 
   if (changes.length > 0) {
     AuditLog.log('Settings updated', 'settings', 'info', JSON.stringify({ changes }), req.ip);
@@ -125,4 +132,5 @@ router.post('/test-telegram', async (req, res) => {
   }
 });
 
-export default router;
+return router;
+}
