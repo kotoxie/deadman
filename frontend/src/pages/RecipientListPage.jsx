@@ -5,7 +5,7 @@ import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import Badge from '../components/ui/Badge.jsx';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, Eye, Mail, MessageCircle, Globe, Users } from 'lucide-react';
+import { Plus, Trash2, Eye, Pencil, Mail, MessageCircle, Globe, Users } from 'lucide-react';
 
 export default function RecipientListPage() {
   const [recipients, setRecipients] = useState([]);
@@ -57,6 +57,9 @@ export default function RecipientListPage() {
               <div className="flex items-center gap-2">
                 <Link to={`/recipients/${r.id}`}>
                   <Button variant="ghost" size="sm"><Eye size={14} /></Button>
+                </Link>
+                <Link to={`/recipients/${r.id}/edit`}>
+                  <Button variant="ghost" size="sm"><Pencil size={14} className="text-blue-400" /></Button>
                 </Link>
                 <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id, r.name)}>
                   <Trash2 size={14} className="text-red-400" />
