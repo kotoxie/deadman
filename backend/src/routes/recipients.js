@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as Recipient from '../models/Recipient.js';
 import { sendTestDelivery } from '../services/deliveryService.js';
+import { validateWebhookUrl } from '../services/webhookService.js';
 import * as AuditLog from '../models/AuditLog.js';
 
 const router = Router();
@@ -23,9 +24,10 @@ function validateDeliveryFields({ email, telegramChatId, webhookUrl }) {
     }
   }
   if (webhookUrl !== undefined && webhookUrl !== null && webhookUrl !== '') {
-    try { new URL(webhookUrl); } catch { return 'Webhook URL is not a valid URL'; }
-    if (!webhookUrl.startsWith('http://') && !webhookUrl.startsWith('https://')) {
-      return 'Webhook URL must start with http:// or https://';
+    try {
+      validateWebhookUrl(webhookUrl);
+    } catch (e) {
+      return e.message;
     }
   }
   return null;
@@ -44,6 +46,7 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   const { name, email, telegramChatId, webhookUrl, autoAssign } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required' });
+  if (/</.test(name)) return res.status(400).json({ error: 'Name must not contain HTML' });
   if (!email && !telegramChatId && !webhookUrl) {
     return res.status(400).json({ error: 'At least one delivery method is required' });
   }
@@ -67,6 +70,9 @@ router.put('/:id', (req, res) => {
   const updates = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
+  }
+  if (updates.name && /</.test(updates.name)) {
+    return res.status(400).json({ error: 'Name must not contain HTML' });
   }
   const fieldError = validateDeliveryFields(updates);
   if (fieldError) return res.status(400).json({ error: fieldError });

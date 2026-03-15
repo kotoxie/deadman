@@ -20,8 +20,9 @@ const BLOCKED_PATTERNS = [
 
 /**
  * Validate webhook URL to prevent SSRF attacks.
+ * Exported so routes can enforce SSRF rules at creation time too.
  */
-function validateWebhookUrl(webhookUrl) {
+export function validateWebhookUrl(webhookUrl) {
   let parsed;
   try {
     parsed = new URL(webhookUrl);

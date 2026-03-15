@@ -73,6 +73,7 @@ router.get('/:id', (req, res) => {
 router.post('/', upload.single('file'), (req, res) => {
   const { type, name } = req.body;
   if (!type || !name) return res.status(400).json({ error: 'type and name are required' });
+  if (/</.test(name)) return res.status(400).json({ error: 'Name must not contain HTML' });
 
   const key = getKey();
   let encrypted, fileName, fileMimeType, fileSize;
@@ -120,7 +121,10 @@ router.put('/:id', upload.single('file'), (req, res) => {
   const key = getKey();
   const updates = {};
 
-  if (req.body.name) updates.name = req.body.name;
+  if (req.body.name) {
+    if (/</.test(req.body.name)) return res.status(400).json({ error: 'Name must not contain HTML' });
+    updates.name = req.body.name;
+  }
 
   if (existing.type === 'file' && req.file) {
     const encrypted = encryptBuffer(req.file.buffer, key);

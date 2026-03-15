@@ -44,14 +44,8 @@ export const testWarning = () => api.post('/checkin/test-warning').then(r => r.d
 // Vault
 export const getVaultItems = () => api.get('/vault').then(r => r.data);
 export const getVaultItem = (id) => api.get(`/vault/${id}`).then(r => r.data);
-export const createVaultItem = (data) => {
-  if (data instanceof FormData) return api.post('/vault', data).then(r => r.data);
-  return api.post('/vault', data).then(r => r.data);
-};
-export const updateVaultItem = (id, data) => {
-  if (data instanceof FormData) return api.put(`/vault/${id}`, data).then(r => r.data);
-  return api.put(`/vault/${id}`, data).then(r => r.data);
-};
+export const createVaultItem = (data) => api.post('/vault', data).then(r => r.data);
+export const updateVaultItem = (id, data) => api.put(`/vault/${id}`, data).then(r => r.data);
 export const deleteVaultItem = (id) => api.delete(`/vault/${id}`).then(r => r.data);
 
 // Recipients
