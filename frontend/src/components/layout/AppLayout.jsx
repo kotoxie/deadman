@@ -1,16 +1,30 @@
 import { useState, useEffect } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Shield, Users, ScrollText, ShieldAlert, Settings, Skull, LogOut, ArrowUpCircle } from 'lucide-react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard, Shield, Users, ScrollText, ShieldAlert,
+  Skull, LogOut, ArrowUpCircle,
+  ShieldCheck, Clock, Bell, Mail, MessageCircle,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { getVersion } from '../../services/api.js';
 
-const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/vault', icon: Shield, label: 'Vault' },
-  { to: '/recipients', icon: Users, label: 'Recipients' },
-  { to: '/logs', icon: ScrollText, label: 'Delivery Logs' },
-  { to: '/audit-log', icon: ShieldAlert, label: 'Audit Log' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+const mainNavItems = [
+  { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/vault',      icon: Shield,           label: 'Vault' },
+  { to: '/recipients', icon: Users,            label: 'Recipients' },
+  { to: '/logs',       icon: ScrollText,       label: 'Delivery Logs' },
+  { to: '/audit-log',  icon: ShieldAlert,      label: 'Audit Log' },
+];
+
+const settingsNavItems = [
+  { to: '/settings/security',      icon: ShieldCheck,    label: 'Login & Security' },
+  { to: '/settings/checkin',       icon: Clock,          label: 'Check-In Config' },
+  { to: '/settings/notifications', icon: Bell,           label: 'Notifications' },
+];
+
+const notifNavItems = [
+  { to: '/settings/smtp',     icon: Mail,           label: 'SMTP' },
+  { to: '/settings/telegram', icon: MessageCircle,  label: 'Telegram' },
 ];
 
 function compareVersions(a, b) {
@@ -23,18 +37,38 @@ function compareVersions(a, b) {
   return 0;
 }
 
+function SubNavItem({ to, icon: Icon, label }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `flex items-center gap-2.5 pl-4 pr-3 py-1.5 rounded-lg text-xs font-medium transition-colors ml-1 ${
+          isActive
+            ? 'bg-brand/15 text-brand'
+            : 'text-gray-500 hover:text-gray-300 hover:bg-surface-lighter'
+        }`
+      }
+    >
+      <Icon size={14} className="shrink-0" />
+      {label}
+    </NavLink>
+  );
+}
+
 export default function AppLayout() {
   const { logout } = useAuth();
+  const location = useLocation();
   const [version, setVersion] = useState(null);
   const [repoUrl, setRepoUrl] = useState('');
   const [latestVersion, setLatestVersion] = useState(null);
+
+  const onSettingsRoute = location.pathname.startsWith('/settings');
 
   useEffect(() => {
     getVersion().then(v => {
       setVersion(v.version);
       setRepoUrl(v.repoUrl);
 
-      // Check GitHub for latest release (best-effort, no error handling needed)
       const match = v.repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
       if (match) {
         fetch(`https://api.github.com/repos/${match[1]}/releases/latest`)
@@ -55,6 +89,7 @@ export default function AppLayout() {
     <div className="flex h-screen">
       {/* Sidebar */}
       <aside className="w-64 bg-surface-light border-r border-border flex flex-col shrink-0">
+        {/* Brand */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Skull className="text-brand" size={28} />
@@ -65,8 +100,10 @@ export default function AppLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map(({ to, icon: Icon, label }) => (
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+          {/* Main items */}
+          {mainNavItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -82,8 +119,37 @@ export default function AppLayout() {
               {label}
             </NavLink>
           ))}
+
+          {/* Settings group */}
+          <div className="pt-3 pb-1">
+            <div className="flex items-center gap-2 px-3 py-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-600">
+                Settings
+              </span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          </div>
+
+          {settingsNavItems.map(item => (
+            <SubNavItem key={item.to} {...item} />
+          ))}
+
+          {/* Notification Settings sub-group */}
+          <div className="pt-3 pb-1">
+            <div className="flex items-center gap-2 px-3 py-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-600">
+                Notification Settings
+              </span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          </div>
+
+          {notifNavItems.map(item => (
+            <SubNavItem key={item.to} {...item} />
+          ))}
         </nav>
 
+        {/* Footer */}
         <div className="p-3 border-t border-border space-y-2">
           {version && (
             <a
@@ -112,7 +178,7 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
         <Outlet />
       </main>

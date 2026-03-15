@@ -13,7 +13,11 @@ import RecipientFormPage from './pages/RecipientFormPage.jsx';
 import RecipientDetailPage from './pages/RecipientDetailPage.jsx';
 import DeliveryLogsPage from './pages/DeliveryLogsPage.jsx';
 import AuditLogPage from './pages/AuditLogPage.jsx';
-import SettingsPage from './pages/SettingsPage.jsx';
+import SettingsSecurityPage from './pages/SettingsSecurityPage.jsx';
+import SettingsCheckinPage from './pages/SettingsCheckinPage.jsx';
+import SettingsNotificationsPage from './pages/SettingsNotificationsPage.jsx';
+import SettingsSmtpPage from './pages/SettingsSmtpPage.jsx';
+import SettingsTelegramPage from './pages/SettingsTelegramPage.jsx';
 
 function ProtectedRoute({ children }) {
   const { authenticated, loading } = useAuth();
@@ -58,7 +62,12 @@ function AppRoutes() {
         <Route path="recipients/:id/edit" element={<RecipientFormPage />} />
         <Route path="logs" element={<DeliveryLogsPage />} />
         <Route path="audit-log" element={<AuditLogPage />} />
-        <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings" element={<Navigate to="/settings/security" replace />} />
+        <Route path="settings/security" element={<SettingsSecurityPage />} />
+        <Route path="settings/checkin" element={<SettingsCheckinPage />} />
+        <Route path="settings/notifications" element={<SettingsNotificationsPage />} />
+        <Route path="settings/smtp" element={<SettingsSmtpPage />} />
+        <Route path="settings/telegram" element={<SettingsTelegramPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
