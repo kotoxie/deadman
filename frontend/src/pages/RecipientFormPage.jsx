@@ -5,6 +5,10 @@ import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import Input from '../components/ui/Input.jsx';
 import toast from 'react-hot-toast';
+import { FileText, KeyRound, Bitcoin, File, Layers } from 'lucide-react';
+
+const typeIcons = { note: FileText, password: KeyRound, wallet: Bitcoin, file: File, custom: Layers };
+const typeColors = { note: 'text-blue-400', password: 'text-yellow-400', wallet: 'text-orange-400', file: 'text-green-400', custom: 'text-purple-400' };
 
 export default function RecipientFormPage() {
   const { id } = useParams();
@@ -96,20 +100,50 @@ export default function RecipientFormPage() {
         </Card>
 
         {vaultItems.length > 0 && (
-          <Card className="space-y-2">
-            <h3 className="font-medium text-gray-300 text-sm">Assign Vault Items</h3>
-            {vaultItems.map(item => (
-              <label key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-lighter cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedItems.includes(item.id)}
-                  onChange={() => toggleItem(item.id)}
-                  className="rounded border-gray-600"
-                />
-                <span className="text-gray-200">{item.name}</span>
-                <span className="text-xs text-gray-500 capitalize">{item.type}</span>
-              </label>
-            ))}
+          <Card className="space-y-1">
+            <div className="flex items-center justify-between pb-2 border-b border-white/5">
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium text-gray-300 text-sm">Vault Items</h3>
+                {selectedItems.length > 0 && (
+                  <span className="text-xs bg-brand/20 text-brand px-2 py-0.5 rounded-full">
+                    {selectedItems.length}/{vaultItems.length}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedItems(
+                  selectedItems.length === vaultItems.length ? [] : vaultItems.map(i => i.id)
+                )}
+                className="text-xs text-brand hover:text-brand/80 transition-colors font-medium"
+              >
+                {selectedItems.length === vaultItems.length ? 'Deselect all' : 'Select all'}
+              </button>
+            </div>
+            <div className="space-y-1 pt-1">
+              {vaultItems.map(item => {
+                const Icon = typeIcons[item.type] || Layers;
+                const checked = selectedItems.includes(item.id);
+                return (
+                  <label
+                    key={item.id}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                      checked ? 'bg-brand/10 border border-brand/25' : 'hover:bg-surface-lighter border border-transparent'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleItem(item.id)}
+                      className="rounded border-gray-600 accent-brand"
+                    />
+                    <Icon size={16} className={typeColors[item.type] || 'text-gray-400'} />
+                    <span className="text-gray-200 text-sm flex-1">{item.name}</span>
+                    <span className="text-xs text-gray-500 capitalize bg-surface-lighter px-2 py-0.5 rounded">{item.type}</span>
+                  </label>
+                );
+              })}
+            </div>
           </Card>
         )}
 
