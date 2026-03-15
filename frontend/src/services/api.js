@@ -2,6 +2,19 @@ import axios from 'axios';
 
 const api = axios.create({ baseURL: '/api' });
 
+// CSRF token store — updated by AuthContext after each successful auth check
+let _csrfToken = null;
+export function setCsrfToken(token) { _csrfToken = token; }
+
+// Attach the CSRF token to every mutating request
+api.interceptors.request.use((config) => {
+  const method = (config.method || '').toUpperCase();
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && _csrfToken) {
+    config.headers['X-CSRF-Token'] = _csrfToken;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {

@@ -8,9 +8,10 @@ router.get('/', (req, res) => {
   const result = AuditLog.findAll({
     category,
     severity,
-    search,
+    // Cap search to 200 chars to prevent expensive LIKE DoS patterns
+    search: search ? String(search).slice(0, 200) : undefined,
     limit: Math.min(parseInt(limit, 10) || 50, 200),
-    offset: parseInt(offset, 10) || 0,
+    offset: Math.max(parseInt(offset, 10) || 0, 0),
   });
   res.json(result);
 });

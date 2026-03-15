@@ -1,3 +1,4 @@
+import path from 'path';
 import { Router } from 'express';
 import multer from 'multer';
 import * as VaultItem from '../models/VaultItem.js';
@@ -8,6 +9,21 @@ import { addItemToAutoAssignRecipients } from '../models/Recipient.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+/**
+ * Sanitize an uploaded filename:
+ *  - Strip any path component (prevents path traversal in email attachments)
+ *  - Remove null bytes and control characters
+ *  - Replace remaining slashes/backslashes
+ *  - Cap at 255 characters
+ */
+function sanitizeFileName(name) {
+  return path.basename(name)
+    .replace(/[\x00-\x1f\x7f]/g, '')  // strip control chars & null bytes
+    .replace(/[/\\]/g, '_')            // replace any residual slashes
+    .slice(0, 255)
+    || 'file';
+}
 
 function getKey() {
   return getAppEncryptionKey(config.dbEncryptionKey);
@@ -64,8 +80,8 @@ router.post('/', upload.single('file'), (req, res) => {
   if (type === 'file') {
     if (!req.file) return res.status(400).json({ error: 'File is required' });
     encrypted = encryptBuffer(req.file.buffer, key);
-    fileName = req.file.originalname;
-    fileMimeType = req.file.mimetype;
+    fileName = sanitizeFileName(req.file.originalname);
+    fileMimeType = req.file.mimetype; // stored as-is; not used for security decisions
     fileSize = req.file.size;
   } else {
     let content;
@@ -112,8 +128,8 @@ router.put('/:id', upload.single('file'), (req, res) => {
       encryptedData: encrypted.ciphertext,
       iv: encrypted.iv,
       authTag: encrypted.authTag,
-      fileName: req.file.originalname,
-      fileMimeType: req.file.mimetype,
+      fileName: sanitizeFileName(req.file.originalname),
+      fileMimeType: req.file.mimetype, // stored as-is; not used for security decisions
       fileSize: req.file.size,
     });
   } else if (req.body.content) {

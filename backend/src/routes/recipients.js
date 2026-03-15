@@ -5,6 +5,32 @@ import * as AuditLog from '../models/AuditLog.js';
 
 const router = Router();
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/**
+ * Validate delivery-method fields.
+ * Returns an error string, or null if all provided values are valid.
+ */
+function validateDeliveryFields({ email, telegramChatId, webhookUrl }) {
+  if (email !== undefined && email !== null && email !== '') {
+    if (typeof email !== 'string' || !EMAIL_RE.test(email)) {
+      return 'Invalid email address format';
+    }
+  }
+  if (telegramChatId !== undefined && telegramChatId !== null && telegramChatId !== '') {
+    if (!/^-?\d+$/.test(String(telegramChatId))) {
+      return 'Telegram Chat ID must be a number (may be negative for group chats)';
+    }
+  }
+  if (webhookUrl !== undefined && webhookUrl !== null && webhookUrl !== '') {
+    try { new URL(webhookUrl); } catch { return 'Webhook URL is not a valid URL'; }
+    if (!webhookUrl.startsWith('http://') && !webhookUrl.startsWith('https://')) {
+      return 'Webhook URL must start with http:// or https://';
+    }
+  }
+  return null;
+}
+
 router.get('/', (req, res) => {
   res.json(Recipient.findAll());
 });
@@ -21,6 +47,8 @@ router.post('/', (req, res) => {
   if (!email && !telegramChatId && !webhookUrl) {
     return res.status(400).json({ error: 'At least one delivery method is required' });
   }
+  const fieldError = validateDeliveryFields({ email, telegramChatId, webhookUrl });
+  if (fieldError) return res.status(400).json({ error: fieldError });
 
   const recipient = Recipient.create({ name, email, telegramChatId, webhookUrl, autoAssign });
   AuditLog.log(`Recipient created: "${name}"`, 'recipient', 'info', JSON.stringify({ id: recipient.id }), req.ip);
@@ -40,6 +68,8 @@ router.put('/:id', (req, res) => {
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
   }
+  const fieldError = validateDeliveryFields(updates);
+  if (fieldError) return res.status(400).json({ error: fieldError });
 
   const recipient = Recipient.update(id, updates);
   AuditLog.log(`Recipient updated: "${recipient.name}"`, 'recipient', 'info', JSON.stringify({ id }), req.ip);

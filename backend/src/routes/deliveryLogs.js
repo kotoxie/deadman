@@ -9,8 +9,8 @@ router.get('/', (req, res) => {
   const result = DeliveryLog.findAll({
     status,
     method,
-    limit: parseInt(limit),
-    offset: parseInt(offset),
+    limit: Math.min(parseInt(limit, 10) || 50, 200),
+    offset: Math.max(parseInt(offset, 10) || 0, 0),
   });
   res.json(result);
 });

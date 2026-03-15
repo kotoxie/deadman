@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { authLogin, authLogout, authCheck } from '../services/api.js';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { authLogin, authLogout, authCheck, setCsrfToken } from '../services/api.js';
 
 const AuthContext = createContext(null);
 
@@ -7,12 +7,19 @@ export function AuthProvider({ children }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Keep a ref so the api interceptor always reads the latest token without a stale closure
+  const csrfRef = useRef(null);
 
   const check = useCallback(async () => {
     try {
       const res = await authCheck();
       setAuthenticated(res.data.authenticated);
       setPasswordChangeRequired(res.data.passwordChangeRequired || false);
+      // Propagate the CSRF token to the Axios instance
+      if (res.data.csrfToken) {
+        csrfRef.current = res.data.csrfToken;
+        setCsrfToken(res.data.csrfToken);
+      }
     } catch {
       setAuthenticated(false);
       setPasswordChangeRequired(false);

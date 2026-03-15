@@ -1,6 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import crypto from 'crypto';
 import session from 'express-session';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
@@ -55,7 +56,9 @@ async function main() {
     // Disable HSTS when not using HTTPS to prevent browsers from force-upgrading to https://
     strictTransportSecurity: config.secureCookies ? undefined : false,
   }));
-  app.use(cors({ origin: false, credentials: true }));
+  // This app is a same-origin SPA (frontend served by the same Express server).
+  // No cross-origin access is needed or allowed.
+  app.use(cors({ origin: false }));
 
   // Body parsing
   app.use(express.json({ limit: '10mb' }));
@@ -98,6 +101,29 @@ async function main() {
   app.get('/api/auth/check', checkAuth);
   app.post('/api/auth/change-password', requireAuth, changePassword);
   app.post('/api/auth/skip-password-change', requireAuth, skipPasswordChange);
+
+  // ─── CSRF Protection ───────────────────────────────────────────
+  // For every mutating API call (non-GET/HEAD/OPTIONS) the frontend must include
+  // the X-CSRF-Token header containing the per-session token issued at login.
+  // Safe methods are exempt because they carry no side-effects.
+  function csrfProtect(req, res, next) {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    // Public auth endpoints that have their own protections (login, logout)
+    if (req.path === '/api/auth/login' || req.path === '/api/auth/logout') return next();
+    const sessionToken = req.session?.csrfToken;
+    const headerToken  = req.headers['x-csrf-token'];
+    if (!sessionToken || !headerToken) {
+      return res.status(403).json({ error: 'CSRF token missing' });
+    }
+    // Constant-time comparison to prevent timing attacks
+    const a = Buffer.from(sessionToken);
+    const b = Buffer.from(headerToken);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return res.status(403).json({ error: 'Invalid CSRF token' });
+    }
+    next();
+  }
+  app.use('/api', csrfProtect);
 
   // Protected (rate-limited)
   app.use('/api/dashboard', requireAuth, apiLimiter, dashboardRoutes);

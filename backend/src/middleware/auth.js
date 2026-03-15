@@ -38,25 +38,21 @@ function verifyPassword(password, stored) {
   const [salt, hash] = stored.split(':');
   const derived = crypto.scryptSync(password, salt, KEY_LEN, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P });
   const hashBuf = Buffer.from(hash, 'hex');
-  if (derived.length !== hashBuf.length) {
-    crypto.timingSafeEqual(derived, derived);
-    return false;
-  }
+  // scrypt always produces KEY_LEN bytes; a length mismatch means a corrupted stored hash.
+  if (derived.length !== hashBuf.length) return false;
   return crypto.timingSafeEqual(derived, hashBuf);
 }
 
 /**
  * Constant-time string comparison to prevent timing attacks.
+ * Both strings are hashed to equal-length SHA-256 digests before comparing,
+ * so differing input lengths cannot be detected via timing.
  */
 function safeCompare(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) {
-    crypto.timingSafeEqual(bufA, bufA);
-    return false;
-  }
-  return crypto.timingSafeEqual(bufA, bufB);
+  const hashA = crypto.createHash('sha256').update(a).digest();
+  const hashB = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
 }
 
 // ─── IP Rate Limiting (DB-backed, survives restarts) ────────────
@@ -200,6 +196,8 @@ export function login(req, res) {
     // Store session version for invalidation on password change
     const user = User.getUser();
     req.session.sessionVersion = user.session_version || 0;
+    // Generate a per-session CSRF token — returned to the frontend via /auth/check
+    req.session.csrfToken = crypto.randomBytes(32).toString('hex');
     logger.info(`Successful login (IP: ${ip})`);
     AuditLog.log('Login successful', 'auth', 'info', null, ip);
     res.json({ success: true });
@@ -224,7 +222,8 @@ export function checkAuth(req, res) {
     const user = User.getUser();
     passwordChangeRequired = !user.password_changed;
   }
-  res.json({ authenticated, passwordChangeRequired });
+  // Include the CSRF token so the frontend can attach it to mutating requests
+  res.json({ authenticated, passwordChangeRequired, csrfToken: req.session?.csrfToken || null });
 }
 
 // ─── Change Password ────────────────────────────────────────────
@@ -238,8 +237,12 @@ export function changePassword(req, res) {
   if (!newPassword || typeof newPassword !== 'string') {
     return res.status(400).json({ error: 'New password is required' });
   }
-  if (newPassword.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (newPassword.length < 12) {
+    return res.status(400).json({ error: 'Password must be at least 12 characters' });
+  }
+  const WEAK_PASSWORDS = ['admin', 'admin123', 'password', 'password123', '12345678', 'change_me_to_a_strong_password'];
+  if (WEAK_PASSWORDS.includes(newPassword)) {
+    return res.status(400).json({ error: 'Password is too weak. Choose a strong, unique password.' });
   }
 
   // Verify current password — check DB hash first, fall back to env var
