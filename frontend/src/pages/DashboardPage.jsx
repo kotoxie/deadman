@@ -140,10 +140,13 @@ function DeliveryTimeline({ checkin }) {
           const pos  = getPos(al.time);
           const past = now > al.time;
           const c    = cfg[al.key === 'checkin' ? 'checkin' : al.key === 'deadline' ? 'deadline' : 'delivery'];
+          // left-anchor: don't shift; center: shift -50%; right-anchor: shift -100%
+          const translateClass = al.anchor === 'left' ? '' : al.anchor === 'right' ? '-translate-x-full' : '-translate-x-1/2';
+          const alignClass     = al.anchor === 'left' ? 'items-start' : al.anchor === 'right' ? 'items-end' : 'items-center';
           return (
             <div
               key={`al-${al.key}`}
-              className="absolute top-1/2 -translate-x-1/2 flex flex-col items-center"
+              className={`absolute top-1/2 flex flex-col ${alignClass} ${translateClass}`}
               style={{ left: `${pos}%` }}
             >
               <div className="w-px h-3 bg-white/10 mt-1" />

@@ -18,7 +18,7 @@ const mainNavItems = [
 
 const settingsNavItems = [
   { to: '/settings/security',      icon: ShieldCheck,    label: 'Login & Security' },
-  { to: '/settings/checkin',       icon: Clock,          label: 'Check-In Config' },
+  { to: '/settings/checkin',       icon: Clock,          label: 'Check-In Configuration' },
   { to: '/settings/notifications', icon: Bell,           label: 'Notifications' },
 ];
 
