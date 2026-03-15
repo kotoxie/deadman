@@ -9,181 +9,192 @@ import Input from '../components/ui/Input.jsx';
 import toast from 'react-hot-toast';
 import { Shield, Users, Clock, AlertTriangle, Play, Pause, Zap, CheckCircle2, Bell, Skull, Timer } from 'lucide-react';
 
-function formatRelativeTime(ms) {
-  const abs = Math.abs(ms);
-  const isPast = ms < 0;
-  if (abs < 3600000) return `${Math.round(abs / 60000)}m ${isPast ? 'ago' : ''}`.trim();
-  if (abs < 86400000) return `${Math.round(abs / 3600000)}h ${isPast ? 'ago' : ''}`.trim();
-  return `${Math.round(abs / 86400000)}d ${isPast ? 'ago' : ''}`.trim();
+// diffMs = eventTime - now  →  positive = future, negative = past
+function formatTime(diffMs) {
+  const abs = Math.abs(diffMs);
+  const past = diffMs < 0;
+  if (abs < 60000) return past ? 'just now' : 'soon';
+  if (abs < 3600000) { const m = Math.round(abs / 60000); return past ? `${m}m ago` : `in ${m}m`; }
+  if (abs < 86400000) { const h = Math.round(abs / 3600000); return past ? `${h}h ago` : `in ${h}h`; }
+  const d = Math.round(abs / 86400000);
+  return past ? `${d}d ago` : `in ${d}d`;
 }
 
-function formatDateTime(isoString) {
-  return new Date(isoString).toLocaleString(undefined, {
-    month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+function formatDateTime(ts) {
+  return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function DeliveryTimeline({ checkin }) {
   const now = Date.now();
   const lastCheckinTime = new Date(checkin.lastCheckinAt).getTime();
-  const deadlineTime = new Date(checkin.nextDeadlineAt).getTime();
-  const graceEndTime = deadlineTime + checkin.gracePeriodHours * 3600000;
+  const deadlineTime   = new Date(checkin.nextDeadlineAt).getTime();
+  const graceEndTime   = deadlineTime + checkin.gracePeriodHours * 3600000;
 
-  const timelineStart = lastCheckinTime;
-  const timelineEnd = graceEndTime;
-  const totalSpan = timelineEnd - timelineStart;
-  const getPos = (t) => Math.max(0, Math.min(100, ((t - timelineStart) / totalSpan) * 100));
-
+  const totalSpan = graceEndTime - lastCheckinTime;
+  const getPos = (t) => Math.max(0, Math.min(100, ((t - lastCheckinTime) / totalSpan) * 100));
   const nowPos = getPos(now);
-  const nowIsPast = now > graceEndTime;
 
   const warningEvents = [...(checkin.warningSchedule || [])]
     .sort((a, b) => b - a)
     .map((hours, i) => ({
       time: deadlineTime - hours * 3600000,
       label: `${hours}h reminder`,
-      shortLabel: `${hours}h`,
       type: 'warning',
       key: `w-${i}`,
     }));
 
   const events = [
-    { time: lastCheckinTime, label: 'Last Check-in', shortLabel: 'Check-in', type: 'checkin', key: 'checkin' },
+    { time: lastCheckinTime, label: 'Last Check-in', type: 'checkin',  key: 'checkin'  },
     ...warningEvents,
-    { time: deadlineTime, label: 'Deadline', shortLabel: 'Deadline', type: 'deadline', key: 'deadline' },
-    { time: graceEndTime, label: 'Delivery', shortLabel: 'Delivery', type: 'delivery', key: 'delivery' },
+    { time: deadlineTime,   label: 'Deadline',       type: 'deadline', key: 'deadline' },
+    { time: graceEndTime,   label: 'Delivery',       type: 'delivery', key: 'delivery' },
   ];
 
-  const eventConfig = {
-    checkin: { icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-400', ring: 'ring-green-400/30', dotBg: 'bg-green-500' },
-    warning: { icon: Bell, color: 'text-yellow-400', bg: 'bg-yellow-400', ring: 'ring-yellow-400/30', dotBg: 'bg-yellow-500' },
-    deadline: { icon: AlertTriangle, color: 'text-orange-400', bg: 'bg-orange-400', ring: 'ring-orange-400/30', dotBg: 'bg-orange-500' },
-    delivery: { icon: Skull, color: 'text-red-400', bg: 'bg-red-400', ring: 'ring-red-400/30', dotBg: 'bg-red-500' },
+  const cfg = {
+    checkin:  { icon: CheckCircle2,  color: 'text-green-400',  dotFill: 'bg-green-500',  ring: 'ring-green-500/40',  iconBg: 'bg-green-500/15'  },
+    warning:  { icon: Bell,          color: 'text-yellow-400', dotFill: 'bg-yellow-500', ring: 'ring-yellow-500/40', iconBg: 'bg-yellow-500/15' },
+    deadline: { icon: AlertTriangle, color: 'text-orange-400', dotFill: 'bg-orange-500', ring: 'ring-orange-500/40', iconBg: 'bg-orange-500/15' },
+    delivery: { icon: Skull,         color: 'text-red-400',    dotFill: 'bg-red-500',    ring: 'ring-red-500/40',   iconBg: 'bg-red-500/15'    },
   };
 
+  const nextEvent = events.find(e => e.time > now);
+
+  // Only 3 anchor labels on the bar — evenly spaced, never overlap
+  const anchorLabels = [
+    { key: 'checkin',  time: lastCheckinTime, label: 'Check-in', anchor: 'left'  },
+    { key: 'deadline', time: deadlineTime,    label: 'Deadline', anchor: 'center' },
+    { key: 'delivery', time: graceEndTime,    label: 'Delivery', anchor: 'right' },
+  ];
+
   return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center justify-between mb-6">
+    <Card>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
-          <Timer size={18} className="text-brand" />
+          <Timer size={17} className="text-brand" />
           <h3 className="font-semibold text-white">Delivery Timeline</h3>
         </div>
         <span className="text-xs text-gray-500">
-          {checkin.intervalDays}d cycle · {checkin.gracePeriodHours}h grace period
+          {checkin.intervalDays}d cycle · {checkin.gracePeriodHours}h grace
         </span>
       </div>
 
-      {/* Progress bar track */}
-      <div className="relative mb-10 mt-4">
-        {/* Background track */}
-        <div className="relative h-2 rounded-full overflow-hidden">
-          {/* Gradient zones */}
-          <div className="absolute inset-0 bg-gradient-to-r from-green-500/30 via-yellow-500/30 via-orange-500/30 to-red-500/30" />
-          {/* Filled progress */}
+      {/* ── Progress bar ── */}
+      <div className="relative" style={{ paddingTop: '28px', paddingBottom: '28px' }}>
+
+        {/* Track background */}
+        <div className="relative h-2 rounded-full bg-white/5">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-500/15 via-yellow-500/15 to-red-500/15" />
+          {/* Filled portion */}
           <div
-            className="absolute left-0 top-0 h-full rounded-full transition-all duration-300"
+            className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
             style={{
               width: `${Math.min(nowPos, 100)}%`,
-              background: nowPos < 50
-                ? 'linear-gradient(to right, #22c55e, #eab308)'
-                : nowPos < 85
-                  ? 'linear-gradient(to right, #22c55e, #eab308, #f97316)'
-                  : 'linear-gradient(to right, #22c55e, #eab308, #f97316, #ef4444)',
+              background: nowPos < 55
+                ? 'linear-gradient(90deg,#22c55e,#eab308)'
+                : nowPos < 82
+                  ? 'linear-gradient(90deg,#22c55e,#eab308,#f97316)'
+                  : 'linear-gradient(90deg,#22c55e,#eab308,#f97316,#ef4444)',
             }}
           />
         </div>
 
-        {/* Event dots on the track */}
+        {/* Event dots */}
         {events.map((ev) => {
-          const pos = getPos(ev.time);
-          const isPast = now > ev.time;
-          const cfg = eventConfig[ev.type];
+          const pos   = getPos(ev.time);
+          const past  = now > ev.time;
+          const isNxt = ev.key === nextEvent?.key;
+          const c     = cfg[ev.type];
           return (
             <div
               key={ev.key}
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
               style={{ left: `${pos}%` }}
             >
-              <div className={`w-4 h-4 rounded-full border-2 ${isPast ? `${cfg.dotBg} border-white/20` : 'bg-surface border-white/20'} transition-all`} />
+              <div className={`rounded-full border-2 border-[#0f1117] transition-all ${
+                past  ? `w-3 h-3 ${c.dotFill}` :
+                isNxt ? `w-4 h-4 bg-[#0f1117] ring-2 ${c.ring}` :
+                        'w-3 h-3 bg-[#1e2433] border-white/15'
+              }`} />
             </div>
           );
         })}
 
-        {/* NOW indicator */}
-        {!checkin.isPaused && !nowIsPast && (
+        {/* NOW pill + stem */}
+        {!checkin.isPaused && nowPos > 0 && nowPos < 100 && (
           <div
-            className="absolute top-1/2 -translate-x-1/2 flex flex-col items-center"
+            className="absolute top-1/2 z-20 -translate-x-1/2 flex flex-col items-center pointer-events-none"
             style={{ left: `${nowPos}%` }}
           >
-            <div className="w-0.5 h-6 -translate-y-full bg-white/70 mb-0" />
-            <div className="absolute -top-8 whitespace-nowrap bg-white/10 backdrop-blur-sm border border-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
-              NOW
+            <div className="mb-0.5 -translate-y-full flex flex-col items-center">
+              <span className="bg-white text-black text-[9px] font-black px-2 py-0.5 rounded tracking-widest shadow-xl mb-1 whitespace-nowrap">
+                NOW
+              </span>
+              <div className="w-px h-4 bg-white/50" />
             </div>
           </div>
         )}
 
-        {/* Event labels */}
-        {events.map((ev, i) => {
-          const pos = getPos(ev.time);
-          const isPast = now > ev.time;
-          const cfg = eventConfig[ev.type];
-          const Icon = cfg.icon;
-          const isAbove = i % 2 === 0;
-
+        {/* Anchor labels below bar — 3 only, never overlap */}
+        {anchorLabels.map((al) => {
+          const pos  = getPos(al.time);
+          const past = now > al.time;
+          const c    = cfg[al.key === 'checkin' ? 'checkin' : al.key === 'deadline' ? 'deadline' : 'delivery'];
           return (
             <div
-              key={`label-${ev.key}`}
-              className="absolute -translate-x-1/2"
-              style={{ left: `${pos}%`, [isAbove ? 'bottom' : 'top']: '14px' }}
+              key={`al-${al.key}`}
+              className="absolute top-1/2 -translate-x-1/2 flex flex-col items-center"
+              style={{ left: `${pos}%` }}
             >
-              <div className={`flex flex-col items-center gap-0.5 ${isAbove ? 'flex-col-reverse' : ''}`}>
-                {!isAbove && <div className="w-px h-3 bg-white/10" />}
-                <div className={`flex items-center gap-1 whitespace-nowrap text-[11px] font-medium ${isPast ? 'text-gray-500' : cfg.color}`}>
-                  <Icon size={11} />
-                  <span>{ev.shortLabel}</span>
-                </div>
-                <div className={`text-[10px] whitespace-nowrap ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>
-                  {isPast
-                    ? formatRelativeTime(ev.time - now)
-                    : formatDateTime(new Date(ev.time).toISOString())}
-                </div>
-                {isAbove && <div className="w-px h-3 bg-white/10" />}
-              </div>
+              <div className="w-px h-3 bg-white/10 mt-1" />
+              <span className={`whitespace-nowrap text-[10px] font-semibold mt-0.5 ${past ? 'text-gray-600' : c.color}`}>
+                {al.label}
+              </span>
+              <span className={`whitespace-nowrap text-[9px] mt-0.5 ${past ? 'text-gray-700' : 'text-gray-500'}`}>
+                {formatTime(al.time - now)}
+              </span>
             </div>
           );
         })}
       </div>
 
-      {/* Event legend / status cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+      {/* ── Event list ── */}
+      <div className="mt-1 border-t border-white/5 pt-3 space-y-0.5">
         {events.map((ev) => {
-          const isPast = now > ev.time;
-          const isNext = !isPast && events.filter(e => !( now > e.time))[0]?.key === ev.key;
-          const cfg = eventConfig[ev.type];
-          const Icon = cfg.icon;
+          const past  = now > ev.time;
+          const isNxt = ev.key === nextEvent?.key;
+          const c     = cfg[ev.type];
+          const Icon  = c.icon;
           return (
             <div
-              key={`card-${ev.key}`}
-              className={`rounded-lg px-3 py-2.5 border transition-all ${
-                isNext
-                  ? `bg-surface-lighter border-white/15 ring-1 ${cfg.ring}`
-                  : isPast
-                    ? 'bg-surface/40 border-white/5 opacity-50'
-                    : 'bg-surface/60 border-white/8'
+              key={`row-${ev.key}`}
+              className={`flex items-center gap-3 px-2 py-2 rounded-lg transition-colors ${
+                isNxt ? 'bg-white/5 border border-white/8' : ''
               }`}
             >
-              <div className={`flex items-center gap-1.5 mb-1 ${isPast ? 'text-gray-500' : cfg.color}`}>
-                <Icon size={12} />
-                <span className="text-[11px] font-semibold">{ev.label}</span>
+              {/* Icon bubble */}
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${past ? 'bg-white/5' : c.iconBg}`}>
+                <Icon size={12} className={past ? 'text-gray-600' : c.color} />
               </div>
-              <p className={`text-[10px] leading-tight ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>
-                {isPast
-                  ? `${formatRelativeTime(ev.time - now)} ago`
-                  : `In ${formatRelativeTime(now - ev.time)}`}
-              </p>
-              {isNext && (
-                <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wide text-brand bg-brand/10 px-1.5 py-0.5 rounded">
+
+              {/* Label */}
+              <span className={`text-sm flex-1 min-w-0 truncate ${past ? 'text-gray-500' : 'text-gray-200'}`}>
+                {ev.label}
+              </span>
+
+              {/* Date */}
+              <span className={`text-xs tabular-nums hidden sm:block ${past ? 'text-gray-700' : 'text-gray-500'}`}>
+                {formatDateTime(ev.time)}
+              </span>
+
+              {/* Relative time */}
+              <span className={`text-xs tabular-nums w-16 text-right font-medium ${past ? 'text-gray-600' : c.color}`}>
+                {formatTime(ev.time - now)}
+              </span>
+
+              {/* Next badge */}
+              {isNxt && (
+                <span className="text-[9px] font-bold uppercase tracking-wider text-brand bg-brand/15 px-1.5 py-0.5 rounded whitespace-nowrap">
                   Next
                 </span>
               )}
