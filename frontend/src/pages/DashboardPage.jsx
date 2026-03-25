@@ -63,7 +63,7 @@ function HealthWidget({ warnings }) {
   );
 }
 
-({ checkin }) {
+function DeliveryTimeline({ checkin }) {
   const now = Date.now();
   const lastCheckinTime = new Date(checkin.lastCheckinAt).getTime();
   const deadlineTime   = new Date(checkin.nextDeadlineAt).getTime();
