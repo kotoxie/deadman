@@ -58,6 +58,7 @@ async function checkDeadline() {
     }
   } catch (err) {
     logger.error('Deadline check error:', err);
+    AuditLog.log(`Deadline check failed: ${err.message}`, 'system', 'critical');
   }
 }
 
@@ -156,5 +157,6 @@ async function checkWarnings() {
     }
   } catch (err) {
     logger.error('Warning check error:', err);
+    AuditLog.log(`Warning check failed: ${err.message}`, 'system', 'critical');
   }
 }
