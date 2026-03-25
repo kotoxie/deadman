@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 
 import config from './config/index.js';
 import { initDatabase, closeDatabase } from './config/database.js';
+import { SQLiteSessionStore } from './config/sessionStore.js';
 import { requireAuth, login, logout, checkAuth, changePassword, skipPasswordChange } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initializeEmailService } from './services/emailService.js';
@@ -68,10 +69,11 @@ async function main() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
 
-  // Session — secure cookie in production
+  // Session — SQLite-backed store (eliminates MemoryStore production warning)
   app.use(session({
     name: 'deadman.sid',
     secret: config.sessionSecret,
+    store: new SQLiteSessionStore({ ttl: 7 * 24 * 60 * 60 }),
     resave: false,
     saveUninitialized: false,
     cookie: {
