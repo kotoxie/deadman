@@ -13,7 +13,47 @@ body {
   @apply bg-surface text-gray-100 min-h-screen;
 }
 
-/* Custom scrollbar */
+/* ── Light mode overrides ── */
+html.light {
+  --color-surface: #f3f4f6;
+  --color-surface-light: #ffffff;
+  --color-surface-lighter: #e5e7eb;
+  --color-border: #d1d5db;
+}
+
+html.light body {
+  color: #111827;
+}
+
+/* Remap gray text so dark grays become readable on light backgrounds */
+html.light .text-white           { color: #030712 !important; }
+html.light .text-gray-100        { color: #111827 !important; }
+html.light .text-gray-200        { color: #1f2937 !important; }
+html.light .text-gray-300        { color: #374151 !important; }
+html.light .text-gray-400        { color: #4b5563 !important; }
+html.light .text-gray-500        { color: #6b7280 !important; }
+html.light .text-gray-600        { color: #9ca3af !important; }
+html.light .text-gray-700        { color: #d1d5db !important; }
+
+/* Subtle backgrounds that used white tints — remap to dark tints in light mode */
+html.light .bg-white\/5          { background-color: rgb(0 0 0 / 0.04) !important; }
+html.light .bg-white\/8          { background-color: rgb(0 0 0 / 0.06) !important; }
+html.light .bg-white\/10         { background-color: rgb(0 0 0 / 0.08) !important; }
+html.light .border-white\/5      { border-color: rgb(0 0 0 / 0.08) !important; }
+html.light .border-white\/8      { border-color: rgb(0 0 0 / 0.10) !important; }
+html.light .border-white\/15     { border-color: rgb(0 0 0 / 0.12) !important; }
+html.light .divide-white\/5      { border-color: rgb(0 0 0 / 0.06) !important; }
+html.light .bg-black\/20         { background-color: rgb(0 0 0 / 0.06) !important; }
+
+/* Sidebar active state stays readable */
+html.light .bg-brand\/15         { background-color: rgb(220 38 38 / 0.12) !important; }
+
+/* Custom scrollbar for light mode */
+html.light ::-webkit-scrollbar-track { background: #f3f4f6; }
+html.light ::-webkit-scrollbar-thumb { background: #d1d5db; }
+
+/* Custom scrollbar (dark default) */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: theme(--color-surface); }
 ::-webkit-scrollbar-thumb { background: theme(--color-surface-lighter); border-radius: 3px; }
+

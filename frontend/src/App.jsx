@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { ThemeProvider, useTheme } from './context/ThemeContext.jsx';
 import AppLayout from './components/layout/AppLayout.jsx';
 import ChangePasswordModal from './components/features/ChangePasswordModal.jsx';
 import LoginPage from './pages/LoginPage.jsx';
@@ -74,19 +75,30 @@ function AppRoutes() {
   );
 }
 
+function ThemedToaster() {
+  const { theme } = useTheme();
+  return (
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        style: theme === 'light'
+          ? { background: '#ffffff', color: '#111827', border: '1px solid #d1d5db' }
+          : { background: '#1f2937', color: '#f3f4f6', border: '1px solid #374151' },
+      }}
+    />
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-        <FirstLoginPasswordPrompt />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: { background: '#1f2937', color: '#f3f4f6', border: '1px solid #374151' },
-          }}
-        />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+          <FirstLoginPasswordPrompt />
+          <ThemedToaster />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

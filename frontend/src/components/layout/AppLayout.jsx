@@ -3,9 +3,10 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Shield, Users, ScrollText, ShieldAlert,
   Skull, LogOut, ArrowUpCircle,
-  ShieldCheck, Clock, Bell, Mail, MessageCircle,
+  ShieldCheck, Clock, Bell, Mail, MessageCircle, Sun, Moon,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import { getVersion } from '../../services/api.js';
 
 const mainNavItems = [
@@ -57,6 +58,7 @@ function SubNavItem({ to, icon: Icon, label }) {
 
 export default function AppLayout() {
   const { logout } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const location = useLocation();
   const [version, setVersion] = useState(null);
   const [repoUrl, setRepoUrl] = useState('');
@@ -168,6 +170,14 @@ export default function AppLayout() {
               {hasUpdate && <span className="text-green-400/70 ml-auto">{latestVersion} available</span>}
             </a>
           )}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-surface-lighter w-full transition-colors"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+          </button>
           <button
             onClick={logout}
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-surface-lighter w-full transition-colors"
