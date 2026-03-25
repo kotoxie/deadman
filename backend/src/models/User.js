@@ -55,6 +55,14 @@ export function incrementSessionVersion() {
   getDb().prepare("UPDATE users SET session_version = COALESCE(session_version, 0) + 1, updated_at = datetime('now') WHERE id = 1").run();
 }
 
+export function setDeliveryTriggered(deadlineAt) {
+  getDb().prepare("UPDATE users SET delivery_triggered_at = ?, updated_at = datetime('now') WHERE id = 1").run(deadlineAt);
+}
+
+export function clearDeliveryTriggered() {
+  getDb().prepare("UPDATE users SET delivery_triggered_at = NULL, updated_at = datetime('now') WHERE id = 1").run();
+}
+
 export function togglePause(paused) {
   const user = getUser();
 

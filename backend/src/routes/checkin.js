@@ -11,6 +11,7 @@ const router = Router();
 // Check in - reset countdown
 router.post('/', (req, res) => {
   const user = User.updateCheckin();
+  User.clearDeliveryTriggered(); // Allow delivery to fire again on the next missed deadline
   WarningLog.clearRecent();
   logger.info('User checked in, deadline reset');
   AuditLog.log('Check-in performed, deadline reset', 'checkin', 'info', null, req.ip);

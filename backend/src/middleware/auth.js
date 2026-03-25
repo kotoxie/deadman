@@ -14,8 +14,11 @@ export function requireAuth(req, res, next) {
     const user = User.getUser();
     const currentVersion = user.session_version || 0;
     if (req.session.sessionVersion !== undefined && req.session.sessionVersion !== currentVersion) {
-      req.session.destroy(() => {});
-      return res.status(401).json({ error: 'Session expired. Please log in again.' });
+      // Destroy session first, then respond — avoids race where next request slips through
+      return req.session.destroy((err) => {
+        if (err) logger.error('Session destroy failed:', err);
+        res.status(401).json({ error: 'Session expired. Please log in again.' });
+      });
     }
     return next();
   }
@@ -196,11 +199,11 @@ export function login(req, res) {
     // Store session version for invalidation on password change
     const user = User.getUser();
     req.session.sessionVersion = user.session_version || 0;
-    // Generate a per-session CSRF token — returned to the frontend via /auth/check
+    // Generate a per-session CSRF token — included in response and available via /auth/check
     req.session.csrfToken = crypto.randomBytes(32).toString('hex');
     logger.info(`Successful login (IP: ${ip})`);
     AuditLog.log('Login successful', 'auth', 'info', null, ip);
-    res.json({ success: true });
+    res.json({ success: true, csrfToken: req.session.csrfToken });
   });
 }
 

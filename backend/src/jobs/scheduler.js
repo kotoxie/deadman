@@ -44,10 +44,16 @@ async function checkDeadline() {
     const graceEnd = deadline + user.grace_period_hours * 3600000;
 
     if (now > graceEnd) {
+      // Idempotency guard: only trigger once per deadline cycle.
+      // delivery_triggered_at stores the deadline that already fired; cleared on next check-in.
+      if (user.delivery_triggered_at === user.next_deadline_at) {
+        return; // Already delivered for this deadline — do not re-trigger
+      }
       logger.warn('DEADLINE EXCEEDED - Triggering delivery');
       AuditLog.log('Deadline exceeded — triggering delivery to all recipients', 'delivery', 'critical');
+      User.setDeliveryTriggered(user.next_deadline_at);
       await triggerAllDeliveries('deadline');
-      // Pause after delivery to prevent re-triggering
+      // Pause after delivery to prevent re-triggering on future cron ticks
       User.togglePause(true);
     }
   } catch (err) {

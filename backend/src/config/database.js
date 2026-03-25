@@ -185,14 +185,22 @@ export async function initDatabase() {
   return db;
 }
 
+let _isSaving = false;
+
 export function saveToDisk() {
   if (!db || !dbPath) return;
+  if (_isSaving) return; // Prevent concurrent writes
+  _isSaving = true;
   try {
     const data = db.export();
     const encrypted = encryptDb(Buffer.from(data));
-    fs.writeFileSync(dbPath, encrypted);
+    const tmpPath = dbPath + '.tmp';
+    fs.writeFileSync(tmpPath, encrypted);
+    fs.renameSync(tmpPath, dbPath); // Atomic: prevents partial/corrupt writes on crash
   } catch (err) {
     logger.error('Failed to save database:', err.message);
+  } finally {
+    _isSaving = false;
   }
 }
 

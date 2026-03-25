@@ -136,4 +136,12 @@ export function initializeSchema(db) {
   } catch {
     db.exec('ALTER TABLE recipients ADD COLUMN auto_assign INTEGER NOT NULL DEFAULT 0');
   }
+
+  // Migration: delivery_triggered_at — tracks which deadline already fired delivery
+  // Prevents duplicate delivery if the app restarts mid-deadline cycle
+  try {
+    db.prepare('SELECT delivery_triggered_at FROM users LIMIT 1').get();
+  } catch {
+    db.exec('ALTER TABLE users ADD COLUMN delivery_triggered_at TEXT');
+  }
 }
