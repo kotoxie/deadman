@@ -1,9 +1,14 @@
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+
+const { version } = JSON.parse(
+  readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8')
+);
 
 // ─── Require all security-critical env vars (no defaults, no dev mode) ───
 const WEAK_PASSWORDS = ['admin', 'admin123', 'password', 'password123', '12345678',
@@ -30,7 +35,7 @@ if (process.env.DB_ENCRYPTION_KEY.length < 32) {
 }
 
 const config = Object.freeze({
-  version: '0.4.0',
+  version,
   repoUrl: 'https://github.com/kotoxie/deadman',
   port: parseInt(process.env.PORT || '6680', 10),
   logLevel: process.env.LOG_LEVEL || 'info',
