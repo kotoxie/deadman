@@ -39,9 +39,17 @@ router.put('/', (req, res) => {
   const settingUpdates = {};
 
   for (const [key, value] of Object.entries(req.body)) {
-    if (key === 'checkin_interval_days') userFields.checkinIntervalDays = parseInt(value);
-    else if (key === 'grace_period_hours') userFields.gracePeriodHours = parseInt(value);
-    else if (key === 'warning_schedule') userFields.warningSchedule = value;
+    if (key === 'checkin_interval_days') {
+      const v = parseInt(value, 10);
+      if (isNaN(v) || v < 1 || v > 365)
+        return res.status(400).json({ error: 'checkin_interval_days must be between 1 and 365' });
+      userFields.checkinIntervalDays = v;
+    } else if (key === 'grace_period_hours') {
+      const v = parseInt(value, 10);
+      if (isNaN(v) || v < 1 || v > 720)
+        return res.status(400).json({ error: 'grace_period_hours must be between 1 and 720' });
+      userFields.gracePeriodHours = v;
+    } else if (key === 'warning_schedule') userFields.warningSchedule = value;
     else if (VALID_KEYS.includes(key)) {
       // Skip sensitive keys if the value is the mask (unchanged from frontend)
       if (SENSITIVE_KEYS.includes(key) && value === SENSITIVE_MASK) continue;

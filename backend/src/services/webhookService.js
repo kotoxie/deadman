@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import dns from 'dns/promises';
 import { URL } from 'url';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
@@ -41,6 +42,32 @@ export function validateWebhookUrl(webhookUrl) {
 }
 
 /**
+ * Resolve the hostname to IPs and verify none are blocked.
+ * Guards against DNS rebinding attacks where a hostname passes string validation
+ * but resolves to a private IP at send time.
+ */
+async function validateResolvedIPs(hostname) {
+  let addresses = [];
+  try {
+    const v4 = await dns.resolve4(hostname).catch(() => []);
+    const v6 = await dns.resolve6(hostname).catch(() => []);
+    addresses = [...v4, ...v6];
+  } catch {
+    // Fall through — if both fail, block by default (fail-safe)
+  }
+  if (addresses.length === 0) {
+    throw new Error(`Webhook hostname "${hostname}" could not be resolved`);
+  }
+  for (const addr of addresses) {
+    for (const pattern of BLOCKED_PATTERNS) {
+      if (pattern.test(addr)) {
+        throw new Error(`Webhook URL resolves to a blocked IP address (${addr})`);
+      }
+    }
+  }
+}
+
+/**
  * Derive webhook signing key from DB_ENCRYPTION_KEY (not hardcoded).
  */
 function getSigningKey() {
@@ -50,7 +77,8 @@ function getSigningKey() {
 }
 
 export async function sendDeliveryWebhook(webhookUrl, itemName, itemType, content) {
-  validateWebhookUrl(webhookUrl);
+  const parsed = validateWebhookUrl(webhookUrl);  // string-level validation
+  await validateResolvedIPs(parsed.hostname);      // DNS-level SSRF guard at send time
 
   const payload = {
     event: 'deadman_switch_delivery',

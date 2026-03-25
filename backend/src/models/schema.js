@@ -1,3 +1,93 @@
+// ─── Migration helpers ────────────────────────────────────────────
+function hasColumn(db, table, col) {
+  return db.prepare(`PRAGMA table_info("${table}")`).all().some(r => r.name === col);
+}
+
+// ─── Versioned migration registry ────────────────────────────────
+const MIGRATIONS = [
+  {
+    version: 1, name: 'add_password_fields',
+    up: (db) => {
+      if (!hasColumn(db, 'users', 'password_hash')) {
+        db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
+        db.exec('ALTER TABLE users ADD COLUMN password_changed INTEGER NOT NULL DEFAULT 0');
+      }
+    }
+  },
+  {
+    version: 2, name: 'add_session_version',
+    up: (db) => {
+      if (!hasColumn(db, 'users', 'session_version'))
+        db.exec('ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0');
+    }
+  },
+  {
+    version: 3, name: 'add_ip_blocks_table',
+    up: (db) => db.exec(`
+      CREATE TABLE IF NOT EXISTS ip_blocks (
+        ip TEXT PRIMARY KEY,
+        failures INTEGER NOT NULL DEFAULT 0,
+        first_failure_at TEXT NOT NULL DEFAULT (datetime('now')),
+        blocked_at TEXT,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `)
+  },
+  {
+    version: 4, name: 'add_auto_assign',
+    up: (db) => {
+      if (!hasColumn(db, 'recipients', 'auto_assign'))
+        db.exec('ALTER TABLE recipients ADD COLUMN auto_assign INTEGER NOT NULL DEFAULT 0');
+    }
+  },
+  {
+    version: 5, name: 'add_delivery_triggered_at',
+    up: (db) => {
+      if (!hasColumn(db, 'users', 'delivery_triggered_at'))
+        db.exec('ALTER TABLE users ADD COLUMN delivery_triggered_at TEXT');
+    }
+  },
+  {
+    version: 6, name: 'add_delivery_log_next_retry_at',
+    up: (db) => {
+      if (!hasColumn(db, 'delivery_logs', 'next_retry_at'))
+        db.exec('ALTER TABLE delivery_logs ADD COLUMN next_retry_at TEXT');
+    }
+  },
+  {
+    version: 7, name: 'add_indexes',
+    up: (db) => db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_vault_items_user_id ON vault_items(user_id);
+      CREATE INDEX IF NOT EXISTS idx_recipients_user_id ON recipients(user_id);
+      CREATE INDEX IF NOT EXISTS idx_delivery_logs_recipient_id ON delivery_logs(recipient_id);
+      CREATE INDEX IF NOT EXISTS idx_delivery_logs_status ON delivery_logs(status);
+      CREATE INDEX IF NOT EXISTS idx_warning_logs_user_id ON warning_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_category ON audit_logs(category);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+    `)
+  },
+];
+
+function runMigrations(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  const applied = new Set(
+    db.prepare('SELECT version FROM schema_migrations').all().map(r => r.version)
+  );
+
+  for (const m of MIGRATIONS) {
+    if (applied.has(m.version)) continue;
+    m.up(db);
+    db.prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)').run(m.version, m.name);
+  }
+}
+
 export function initializeSchema(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -104,44 +194,6 @@ export function initializeSchema(db) {
     `).run();
   }
 
-  // Migration: add password columns if they don't exist
-  try {
-    db.prepare('SELECT password_hash FROM users LIMIT 1').get();
-  } catch {
-    db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
-    db.exec('ALTER TABLE users ADD COLUMN password_changed INTEGER NOT NULL DEFAULT 0');
-  }
-
-  // Migration: session_version for session invalidation on password change
-  try {
-    db.prepare('SELECT session_version FROM users LIMIT 1').get();
-  } catch {
-    db.exec('ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0');
-  }
-
-  // Migration: ip_blocks table for persistent IP rate limiting
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS ip_blocks (
-      ip TEXT PRIMARY KEY,
-      failures INTEGER NOT NULL DEFAULT 0,
-      first_failure_at TEXT NOT NULL DEFAULT (datetime('now')),
-      blocked_at TEXT,
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
-
-  // Migration: auto_assign flag on recipients
-  try {
-    db.prepare('SELECT auto_assign FROM recipients LIMIT 1').get();
-  } catch {
-    db.exec('ALTER TABLE recipients ADD COLUMN auto_assign INTEGER NOT NULL DEFAULT 0');
-  }
-
-  // Migration: delivery_triggered_at — tracks which deadline already fired delivery
-  // Prevents duplicate delivery if the app restarts mid-deadline cycle
-  try {
-    db.prepare('SELECT delivery_triggered_at FROM users LIMIT 1').get();
-  } catch {
-    db.exec('ALTER TABLE users ADD COLUMN delivery_triggered_at TEXT');
-  }
+  // Run all versioned migrations (idempotent — skips already-applied versions)
+  runMigrations(db);
 }

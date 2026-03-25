@@ -10,6 +10,34 @@ import { addItemToAutoAssignRecipients } from '../models/Recipient.js';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
+// Executable/auto-run file types that must never be stored (blocklist approach)
+const BLOCKED_EXTENSIONS = new Set([
+  '.exe', '.dll', '.so', '.dylib', '.com', '.pif', '.scr',
+  '.bat', '.cmd', '.ps1', '.psm1', '.psd1',
+  '.vbs', '.vbe', '.wsf', '.wsh', '.hta',
+  '.msi', '.deb', '.rpm', '.pkg',
+]);
+
+const BLOCKED_MIME_TYPES = new Set([
+  'application/x-msdownload',
+  'application/x-executable',
+  'application/x-dosexec',
+  'application/vnd.microsoft.portable-executable',
+  'application/x-msdos-program',
+  'application/x-sh',
+  'application/x-shellscript',
+  'application/bat',
+  'application/x-bat',
+]);
+
+function validateUploadedFile(file) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (BLOCKED_EXTENSIONS.has(ext))
+    throw new Error(`File extension "${ext}" is not permitted`);
+  if (BLOCKED_MIME_TYPES.has(file.mimetype))
+    throw new Error(`File type "${file.mimetype}" is not permitted`);
+}
+
 /**
  * Sanitize an uploaded filename:
  *  - Strip any path component (prevents path traversal in email attachments)
@@ -80,9 +108,10 @@ router.post('/', upload.single('file'), (req, res) => {
 
   if (type === 'file') {
     if (!req.file) return res.status(400).json({ error: 'File is required' });
+    try { validateUploadedFile(req.file); } catch (e) { return res.status(400).json({ error: e.message }); }
     encrypted = encryptBuffer(req.file.buffer, key);
     fileName = sanitizeFileName(req.file.originalname);
-    fileMimeType = req.file.mimetype; // stored as-is; not used for security decisions
+    fileMimeType = req.file.mimetype;
     fileSize = req.file.size;
   } else {
     let content;
@@ -127,13 +156,14 @@ router.put('/:id', upload.single('file'), (req, res) => {
   }
 
   if (existing.type === 'file' && req.file) {
+    try { validateUploadedFile(req.file); } catch (e) { return res.status(400).json({ error: e.message }); }
     const encrypted = encryptBuffer(req.file.buffer, key);
     Object.assign(updates, {
       encryptedData: encrypted.ciphertext,
       iv: encrypted.iv,
       authTag: encrypted.authTag,
       fileName: sanitizeFileName(req.file.originalname),
-      fileMimeType: req.file.mimetype, // stored as-is; not used for security decisions
+      fileMimeType: req.file.mimetype,
       fileSize: req.file.size,
     });
   } else if (req.body.content) {

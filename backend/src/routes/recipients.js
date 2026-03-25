@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as Recipient from '../models/Recipient.js';
-import { sendTestDelivery } from '../services/deliveryService.js';
+import { sendTestDelivery, sendPreviewDelivery } from '../services/deliveryService.js';
 import { validateWebhookUrl } from '../services/webhookService.js';
 import * as AuditLog from '../models/AuditLog.js';
 
@@ -116,6 +116,57 @@ router.post('/:id/test', async (req, res) => {
     res.json({ success: true, results });
   } catch (err) {
     res.status(500).json({ error: 'Test delivery failed', details: err.message });
+  }
+});
+
+// Preview — shows what will be delivered without sending anything
+router.get('/:id/preview', (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+  const recipient = Recipient.findById(id);
+  if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
+
+  const deliveryMethods = [];
+  if (recipient.email) deliveryMethods.push('email');
+  if (recipient.telegram_chat_id) deliveryMethods.push('telegram');
+  if (recipient.webhook_url) deliveryMethods.push('webhook');
+
+  res.json({
+    recipient: { id: recipient.id, name: recipient.name, delivery_methods: deliveryMethods },
+    items: recipient.items.map(i => ({ id: i.id, name: i.name, type: i.type })),
+    total_items: recipient.items.length,
+    warning: recipient.items.length === 0
+      ? 'No items assigned — nothing will be delivered when the switch fires'
+      : null,
+    _action: 'To send the actual decrypted content to this recipient, POST to /preview/send with X-Confirm: DELIVER_PREVIEW',
+  });
+});
+
+// Preview send — decrypts and delivers to this recipient on demand (requires explicit confirmation)
+router.post('/:id/preview/send', async (req, res) => {
+  if (req.headers['x-confirm'] !== 'DELIVER_PREVIEW') {
+    return res.status(400).json({ error: 'Must send X-Confirm: DELIVER_PREVIEW header to confirm intentional delivery' });
+  }
+
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+  const recipient = Recipient.findById(id);
+  if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
+  if (recipient.items.length === 0) {
+    return res.status(400).json({ error: 'No items assigned to this recipient' });
+  }
+
+  try {
+    const results = await sendPreviewDelivery(recipient);
+    AuditLog.log(
+      `Manual preview delivery sent to "${recipient.name}"`,
+      'delivery', 'warning',
+      JSON.stringify({ recipientId: id, itemCount: recipient.items.length }),
+      req.ip
+    );
+    res.json({ success: true, results });
+  } catch (err) {
+    res.status(500).json({ error: 'Preview delivery failed', details: err.message });
   }
 });
 
