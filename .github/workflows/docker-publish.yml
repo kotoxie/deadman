@@ -22,11 +22,44 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Build release notes from commits
+        id: notes
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${{ github.ref_name }}$" | head -n1)
+          echo "Previous tag: $PREV_TAG"
+
+          declare -A groups
+          while IFS= read -r line; do
+            hash="${line%% *}"
+            msg="${line#* }"
+            if [[ "$msg" == feat* ]];       then groups[features]+="- ${msg#*: }"$'\n'
+            elif [[ "$msg" == fix* ]];      then groups[fixes]+="- ${msg#*: }"$'\n'
+            elif [[ "$msg" == perf* ]];     then groups[perf]+="- ${msg#*: }"$'\n'
+            elif [[ "$msg" == *security* ]]; then groups[security]+="- ${msg#*: }"$'\n'
+            elif [[ "$msg" == docs* ]];     then groups[docs]+="- ${msg#*: }"$'\n'
+            elif [[ "$msg" == refactor* ]]; then groups[refactor]+="- ${msg#*: }"$'\n'
+            fi
+          done < <(git log "${PREV_TAG}".."${{ github.ref_name }}" --pretty=format:"%H %s")
+
+          BODY=""
+          [[ -n "${groups[features]}" ]]  && BODY+="## ✨ New Features"$'\n'"${groups[features]}"$'\n'
+          [[ -n "${groups[fixes]}" ]]     && BODY+="## 🐛 Bug Fixes"$'\n'"${groups[fixes]}"$'\n'
+          [[ -n "${groups[perf]}" ]]      && BODY+="## ⚡ Performance"$'\n'"${groups[perf]}"$'\n'
+          [[ -n "${groups[security]}" ]]  && BODY+="## 🔒 Security"$'\n'"${groups[security]}"$'\n'
+          [[ -n "${groups[docs]}" ]]      && BODY+="## 📚 Documentation"$'\n'"${groups[docs]}"$'\n'
+          [[ -n "${groups[refactor]}" ]]  && BODY+="## 🔧 Refactoring"$'\n'"${groups[refactor]}"$'\n'
+
+          BODY+=$'\n'"**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ github.ref_name }}"
+
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "💀 Dead Man's Switch ${{ github.ref_name }}"
-          generate_release_notes: true
+          body: ${{ steps.notes.outputs.body }}
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
         env:
