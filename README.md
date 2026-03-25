@@ -1,28 +1,52 @@
-# Dead Man's Switch
+<div align="center">
 
-A self-hosted Dead Man's Switch application that securely stores sensitive data (passwords, notes, crypto wallets, files) and automatically delivers them to designated recipients if you fail to check in within a configurable time window.
+# 💀 Dead Man's Switch
 
-> **Disclaimer:** This is a vibe coding project, built entirely through AI-assisted development (Claude). While functional and security-hardened, it has not been formally audited. Use at your own risk, especially for anything mission-critical. Always maintain separate backups of truly important data.
+**Your digital legacy, on your terms.**
 
----
+A self-hosted, encrypted vault that automatically delivers your most sensitive data — passwords, crypto wallets, private notes, files — to the right people if you're ever unreachable.
 
-## How It Works
+[![Docker Image](https://img.shields.io/badge/ghcr.io-kotoxie%2Fdeadman-blue?logo=docker&logoColor=white)](https://ghcr.io/kotoxie/deadman)
+[![Latest Release](https://img.shields.io/github/v/release/kotoxie/deadman?color=brightgreen&logo=github)](https://github.com/kotoxie/deadman/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 
-1. **Store secrets** in an encrypted vault (notes, passwords, crypto wallet seeds, files up to 50 MB).
-2. **Add recipients** who should receive your data (via email, Telegram, or webhook).
-3. **Assign vault items** to specific recipients -- each person only gets what you intended.
-4. **Check in periodically** (default: every 14 days) to prove you are alive and well.
-5. **If you miss the deadline**, the system sends configurable warnings (72h, 48h, 24h, 12h, 6h, 1h before expiry). If the grace period also passes with no check-in, all assigned items are automatically decrypted and delivered to their recipients.
-
-A **Panic** button is available to trigger immediate delivery of everything, and a **Pause** toggle lets you freeze the countdown when needed (e.g., going on a trip without internet).
+</div>
 
 ---
 
-## Quick Start (Docker Compose)
+## What is this?
 
-### Option A: Pull from GitHub Container Registry (recommended)
+A **Dead Man's Switch** is a mechanism that activates when you *stop* doing something — in this case, checking in. If you miss your check-in window, the system automatically delivers your designated secrets to the people you trust.
 
-The fastest way to get started -- no build required:
+Think of it as a digital will for your online life: your family gets the crypto wallet, your business partner gets the server credentials, your lawyer gets the private documents — all encrypted until the moment it matters.
+
+> ⚠️ **Disclaimer:** Built with AI assistance (Claude) as a functional proof of concept. Security best practices are applied, but no formal audit has been conducted. Use at your own risk for mission-critical data. Always maintain offline backups.
+
+---
+
+## ✨ Features
+
+| Feature | Details |
+|---|---|
+| 🔐 **Encrypted Vault** | Store notes, passwords, crypto seeds, and files (up to 50 MB) with AES encryption |
+| 👥 **Per-Recipient Delivery** | Assign specific items to specific people — no one sees more than intended |
+| 📬 **Multi-Channel Delivery** | Email (SMTP), Telegram bot, or custom webhook |
+| ⏱️ **Countdown Timer** | Configurable check-in window (default: 14 days) with live countdown |
+| 🔔 **Warning Cascade** | Automated alerts at 72h, 48h, 24h, 12h, 6h, and 1h before delivery |
+| 🚨 **Panic Button** | Trigger immediate delivery of everything with a single click |
+| ⏸️ **Pause Mode** | Freeze the countdown when you're going off-grid (travel, no internet) |
+| 📋 **Audit Logs** | Full audit trail of every action taken in the system |
+| 🔄 **Delivery Logs** | Track delivery attempts, successes, and retries |
+| 🛡️ **Security Hardened** | Rate limiting, secure sessions, Helmet.js headers, encrypted DB |
+
+---
+
+## 🚀 Quick Start
+
+### Option A — Docker (Recommended)
+
+Pull and run in seconds, no build required:
 
 ```yaml
 # docker-compose.yml
@@ -40,54 +64,47 @@ services:
       - MASTER_PASSWORD=change-me-to-something-strong
       - SESSION_SECRET=generate-a-random-64-char-string
       - DB_ENCRYPTION_KEY=generate-another-random-64-char-string
-      # Set to false if accessing over plain HTTP (no HTTPS)
+      # Uncomment if NOT using HTTPS:
       # - SECURE_COOKIES=false
 ```
 
 ```bash
 docker compose up -d
-# Open http://localhost:6680
 ```
 
-> **Tip:** Pin a specific version instead of `latest` for stability, e.g. `ghcr.io/kotoxie/deadman:0.1.5`
+Then open **http://localhost:6680** 🎉
 
-### Option B: Build from source
+> 💡 **Tip:** Pin a specific version for stability — e.g. `ghcr.io/kotoxie/deadman:1.0.0`
 
-#### 1. Create your project directory
+---
+
+### Option B — Build from Source
+
+<details>
+<summary>Click to expand build-from-source instructions</summary>
+
+#### 1. Clone the repo
 
 ```bash
-mkdir deadman-switch && cd deadman-switch
+git clone https://github.com/kotoxie/deadman.git deadman-switch
+cd deadman-switch
 ```
 
-#### 2. Create a `.env` file
+#### 2. Install dependencies
 
-```env
-# Server
-PORT=6680
-
-# Authentication - CHANGE THIS (app refuses to start with defaults in production)
-MASTER_PASSWORD=your_strong_master_password_here
-
-# Security keys - CHANGE THESE (generate with: openssl rand -hex 32)
-SESSION_SECRET=your_random_64_char_hex_string_here
-DB_ENCRYPTION_KEY=your_random_64_char_hex_string_here
-
-# Data directory (inside container)
-DATA_DIR=/app/data
-
-# Optional: SMTP configuration (can also be set in the Settings UI)
-# SMTP_HOST=smtp.gmail.com
-# SMTP_PORT=587
-# SMTP_USER=you@gmail.com
-# SMTP_PASS=your_app_password
-# SMTP_FROM=you@gmail.com
-# SMTP_SECURE=false
-
-# Optional: Telegram bot (can also be set in the Settings UI)
-# TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
+```bash
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
 ```
 
-#### 3. Create `docker-compose.yml`
+#### 3. Configure environment
+
+```bash
+cp .env.example .env
+# Edit .env — see Environment Variables section below
+```
+
+#### 4. Create `docker-compose.yml`
 
 ```yaml
 services:
@@ -105,124 +122,115 @@ services:
       - DATA_DIR=/app/data
 ```
 
-#### 4. Build and run
+#### 5. Build and launch
 
 ```bash
 docker compose up -d
 ```
 
-The app will be available at `http://localhost:6680`.
+</details>
 
 ---
 
-## Quick Start (Local Development)
+### Option C — Local Development
 
-### Prerequisites
+<details>
+<summary>Click to expand local dev instructions</summary>
 
-- Node.js 20+
-- npm
-
-### 1. Clone and install
+**Prerequisites:** Node.js 20+, npm
 
 ```bash
 git clone https://github.com/kotoxie/deadman.git deadman-switch
 cd deadman-switch
 
-# Install backend dependencies
 cd backend && npm install && cd ..
-
-# Install frontend dependencies
 cd frontend && npm install && cd ..
-```
 
-### 2. Configure environment
-
-```bash
 cp .env.example .env
-# Edit .env with your settings (defaults work for development)
+
+cd backend && node src/index.js
 ```
 
-### 3. Start the dev server
+Open **http://localhost:6680** — default dev password: `admin123`
 
-```bash
-cd backend
-node src/index.js
-```
+The server runs the Express API and Vite dev server (with HMR) on a single port.
 
-This starts both the Express API and Vite dev server (with HMR) on a single port. Open `http://localhost:6680` in your browser.
-
-Default development credentials:
-- **Password:** `admin123`
+</details>
 
 ---
 
-## Environment Variables
+## ⚙️ Environment Variables
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
+|---|---|---|---|
 | `PORT` | No | `6680` | HTTP server port |
 | `NODE_ENV` | No | `development` | `development` or `production` |
-| `MASTER_PASSWORD` | **Yes (prod)** | `admin` (dev only) | Master login password. App refuses to start in production with default values. |
-| `SESSION_SECRET` | **Yes (prod)** | Auto-generated (dev) | Secret for signing session cookies. Use `openssl rand -hex 32` to generate. |
-| `DB_ENCRYPTION_KEY` | **Yes (prod)** | Auto-generated (dev) | Key used to derive vault encryption keys. Use `openssl rand -hex 32` to generate. |
-| `DATA_DIR` | No | `./data` | Directory for the SQLite database file |
-| `SMTP_HOST` | No | -- | SMTP server hostname (e.g., `smtp.gmail.com`) |
-| `SMTP_PORT` | No | `587` | SMTP server port |
-| `SMTP_USER` | No | -- | SMTP username/email |
-| `SMTP_PASS` | No | -- | SMTP password or app-specific password |
-| `SMTP_FROM` | No | -- | Sender email address |
-| `SMTP_SECURE` | No | `false` | Set to `true` for port 465 (SSL) |
-| `TELEGRAM_BOT_TOKEN` | No | -- | Telegram bot token from @BotFather |
+| `MASTER_PASSWORD` | **Prod only** | `admin` (dev) | Master login password |
+| `SESSION_SECRET` | **Prod only** | Auto-generated (dev) | Session cookie signing secret — use `openssl rand -hex 32` |
+| `DB_ENCRYPTION_KEY` | **Prod only** | Auto-generated (dev) | Vault encryption key — use `openssl rand -hex 32` |
+| `DATA_DIR` | No | `./data` | SQLite database directory |
+| `SMTP_HOST` | No | — | SMTP hostname (e.g. `smtp.gmail.com`) |
+| `SMTP_PORT` | No | `587` | SMTP port |
+| `SMTP_USER` | No | — | SMTP username/email |
+| `SMTP_PASS` | No | — | SMTP password or app password |
+| `SMTP_FROM` | No | — | Sender email address |
+| `SMTP_SECURE` | No | `false` | `true` for port 465 (SSL) |
+| `TELEGRAM_BOT_TOKEN` | No | — | Bot token from [@BotFather](https://t.me/BotFather) |
 
-> **Production safety:** The app will refuse to start in production if `MASTER_PASSWORD`, `SESSION_SECRET`, or `DB_ENCRYPTION_KEY` are missing or still set to default values.
+> 🔒 **Production safety:** The app refuses to start in production if `MASTER_PASSWORD`, `SESSION_SECRET`, or `DB_ENCRYPTION_KEY` are missing or set to defaults.
 
-SMTP and Telegram settings can also be configured through the Settings page in the UI. Values set in the UI are stored encrypted in the database and take precedence.
+SMTP and Telegram can also be configured from the **Settings UI** — values stored there take precedence and are encrypted in the database.
 
 ---
 
-## API Endpoints
+## 🔌 API Reference
 
-All API routes are prefixed with `/api` and require authentication (except login/check).
+All routes require authentication (except `/api/auth/*`). Prefix: `/api`
+
+<details>
+<summary>Click to expand full API table</summary>
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/auth/login` | Login with master password (rate limited: 10/15min) |
+|---|---|---|
+| `POST` | `/api/auth/login` | Login (rate limited: 10 req/15 min) |
 | `POST` | `/api/auth/logout` | End session |
-| `GET` | `/api/auth/check` | Check authentication status |
-| `POST` | `/api/auth/change-password` | Change password (requires auth) |
-| `POST` | `/api/auth/skip-password-change` | Skip first-login password change prompt |
-| `GET` | `/api/dashboard` | Dashboard stats and countdown |
-| `POST` | `/api/checkin` | Check in (reset deadline) |
-| `POST` | `/api/checkin/panic` | Trigger immediate delivery (requires `X-Confirm: DELIVER` header) |
-| `POST` | `/api/checkin/pause` | Pause/resume the countdown |
+| `GET` | `/api/auth/check` | Check auth status |
+| `POST` | `/api/auth/change-password` | Change master password |
+| `POST` | `/api/auth/skip-password-change` | Skip first-login prompt |
+| `GET` | `/api/dashboard` | Dashboard stats + countdown |
+| `POST` | `/api/checkin` | Check in (resets deadline) |
+| `POST` | `/api/checkin/panic` | Immediate delivery (`X-Confirm: DELIVER` header required) |
+| `POST` | `/api/checkin/pause` | Toggle pause/resume |
 | `GET` | `/api/vault` | List vault items (metadata only) |
 | `POST` | `/api/vault` | Create vault item |
-| `GET` | `/api/vault/:id` | Get vault item (decrypted) |
-| `PUT` | `/api/vault/:id` | Update vault item |
-| `DELETE` | `/api/vault/:id` | Delete vault item |
+| `GET` | `/api/vault/:id` | Get decrypted item |
+| `PUT` | `/api/vault/:id` | Update item |
+| `DELETE` | `/api/vault/:id` | Delete item |
 | `GET` | `/api/recipients` | List recipients |
 | `POST` | `/api/recipients` | Create recipient |
-| `GET` | `/api/recipients/:id` | Get recipient with assigned items |
+| `GET` | `/api/recipients/:id` | Get recipient + assigned items |
 | `PUT` | `/api/recipients/:id` | Update recipient |
 | `DELETE` | `/api/recipients/:id` | Delete recipient |
-| `POST` | `/api/recipients/:id/assign` | Assign vault items to recipient |
+| `POST` | `/api/recipients/:id/assign` | Assign vault items |
 | `POST` | `/api/recipients/:id/test` | Send test delivery |
-| `GET` | `/api/delivery-logs` | List delivery logs (filterable) |
-| `POST` | `/api/delivery-logs/:id/retry` | Retry a failed delivery |
-| `GET` | `/api/audit-logs` | List audit logs (filterable by category/severity) |
-| `GET` | `/api/settings` | Get all settings |
+| `GET` | `/api/delivery-logs` | Delivery log (filterable) |
+| `POST` | `/api/delivery-logs/:id/retry` | Retry failed delivery |
+| `GET` | `/api/audit-logs` | Audit log (filter by category/severity) |
+| `GET` | `/api/settings` | Get settings |
 | `PUT` | `/api/settings` | Update settings |
 | `POST` | `/api/settings/test-email` | Send test email |
 | `POST` | `/api/settings/test-telegram` | Send test Telegram message |
 
----
-
-## License
-
-MIT
+</details>
 
 ---
 
-## Disclaimer
+## 📄 License
 
-This software is provided as-is, without warranty of any kind. This is a **vibe coding project** -- built rapidly through AI-assisted development as a proof of concept. While security best practices have been applied, the codebase has **not undergone a formal security audit**.
+[MIT](LICENSE) — free to use, modify, and self-host.
+
+---
+
+<div align="center">
+<sub>Built with ❤️ and a healthy dose of existential planning.</sub>
+</div>
