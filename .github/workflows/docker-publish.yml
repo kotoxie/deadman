@@ -22,21 +22,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate release notes
-        id: release_notes
-        uses: orhun/git-cliff-action@v3
-        with:
-          config: .github/cliff.toml
-          args: --latest --strip header
-        env:
-          OUTPUT: RELEASE_NOTES.md
-          GITHUB_REPO: ${{ github.repository }}
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "💀 Dead Man's Switch ${{ github.ref_name }}"
-          body_path: RELEASE_NOTES.md
+          generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
         env:
