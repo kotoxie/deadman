@@ -32,7 +32,6 @@ COPY --from=build /app/backend/public ./public/
 # Ensure the data directory exists and is owned by the non-root user
 RUN mkdir -p /app/data && chown -R deadman:deadman /app
 
-ENV NODE_ENV=production
 ENV DATA_DIR=/app/data
 ENV PORT=6680
 EXPOSE 6680

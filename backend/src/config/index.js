@@ -39,11 +39,13 @@ const config = Object.freeze({
   repoUrl: 'https://github.com/kotoxie/deadman',
   port: parseInt(process.env.PORT || '6680', 10),
   logLevel: process.env.LOG_LEVEL || 'info',
-  secureCookies: process.env.SECURE_COOKIES === 'true',
   dataDir: path.resolve(process.env.DATA_DIR || path.join(__dirname, '../../data')),
   masterPassword: process.env.MASTER_PASSWORD,
   sessionSecret: process.env.SESSION_SECRET,
   dbEncryptionKey: process.env.DB_ENCRYPTION_KEY,
+  // Optional: paths to a custom TLS cert/key. If not set, a self-signed cert is auto-generated.
+  tlsCertPath: process.env.TLS_CERT_PATH || null,
+  tlsKeyPath:  process.env.TLS_KEY_PATH  || null,
 });
 
 export default config;

@@ -1,4 +1,5 @@
 import express from 'express';
+import https from 'https';
 import helmet from 'helmet';
 import cors from 'cors';
 import crypto from 'crypto';
@@ -9,6 +10,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 import config from './config/index.js';
+import { loadTlsCredentials } from './config/tls.js';
 import { initDatabase, closeDatabase } from './config/database.js';
 import { SQLiteSessionStore } from './config/sessionStore.js';
 import { requireAuth, login, logout, checkAuth, changePassword, skipPasswordChange } from './middleware/auth.js';
@@ -33,6 +35,9 @@ async function main() {
   // Initialize database (async for sql.js WASM init)
   await initDatabase();
 
+  // Load TLS credentials (auto-generates self-signed cert on first run)
+  const tlsCredentials = loadTlsCredentials(config.dataDir);
+
   // Initialize delivery services
   try { initializeEmailService(); } catch (e) { logger.debug('Email service not configured:', e.message); }
   try { initializeTelegram(); } catch (e) { logger.debug('Telegram service not configured:', e.message); }
@@ -46,7 +51,7 @@ async function main() {
     app.set('trust proxy', storedTrustProxy);
   }
 
-  // Security headers
+  // Security headers — always HTTPS, so enable HSTS and CSP upgrade unconditionally
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -55,11 +60,13 @@ async function main() {
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", "https://api.github.com"],
-        upgradeInsecureRequests: config.secureCookies ? [] : null,
+        upgradeInsecureRequests: [],
       },
     },
-    // Disable HSTS when not using HTTPS to prevent browsers from force-upgrading to https://
-    strictTransportSecurity: config.secureCookies ? undefined : false,
+    strictTransportSecurity: {
+      maxAge: 31536000,           // 1 year
+      includeSubDomains: true,
+    },
   }));
   // This app is a same-origin SPA (frontend served by the same Express server).
   // No cross-origin access is needed or allowed.
@@ -78,9 +85,9 @@ async function main() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: config.secureCookies,  // Requires HTTPS; override with SECURE_COOKIES=false for plain HTTP
+      secure: true,              // Always true — server only speaks HTTPS
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      sameSite: 'strict',      // Strict CSRF protection (upgraded from 'lax')
+      sameSite: 'strict',
     },
   }));
 
@@ -158,9 +165,14 @@ async function main() {
   // Start scheduler
   startScheduler();
 
-  // Start server
-  app.listen(config.port, () => {
-    logger.info(`Dead Man's Switch v${config.version} running on port ${config.port}`);
+  // Start HTTPS server
+  const server = https.createServer(tlsCredentials, app);
+  server.listen(config.port, () => {
+    logger.info(`Dead Man's Switch v${config.version} running on https://localhost:${config.port}`);
+    if (!config.tlsCertPath) {
+      logger.warn('Using a self-signed TLS certificate — browsers will show a security warning.');
+      logger.warn('To use a trusted certificate, set TLS_CERT_PATH and TLS_KEY_PATH in your .env');
+    }
   });
 }
 

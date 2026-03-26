@@ -38,7 +38,7 @@ Think of it as a digital will for your online life: your family gets the crypto 
 | ⏸️ **Pause Mode** | Freeze the countdown when you're going off-grid (travel, no internet) |
 | 📋 **Audit Logs** | Full audit trail of every action taken in the system |
 | 🔄 **Delivery Logs** | Track delivery attempts, successes, and retries |
-| 🛡️ **Security Hardened** | Rate limiting, secure sessions, Helmet.js headers, encrypted DB |
+| 🛡️ **Security Hardened** | HTTPS-only with auto-generated TLS, rate limiting, HSTS, CSRF protection, encrypted DB |
 
 ---
 
@@ -64,17 +64,17 @@ services:
       - MASTER_PASSWORD=change-me-to-something-strong
       - SESSION_SECRET=generate-a-random-64-char-string
       - DB_ENCRYPTION_KEY=generate-another-random-64-char-string
-      # Uncomment if NOT using HTTPS:
-      # - SECURE_COOKIES=false
 ```
 
 ```bash
 docker compose up -d
 ```
 
-Then open **http://localhost:6680** 🎉
+Then open **https://localhost:6680** 🎉
 
-> 💡 **Tip:** Pin a specific version for stability — e.g. `ghcr.io/kotoxie/deadman:1.0.0`
+> ⚠️ **Self-signed certificate:** On first start a TLS certificate is auto-generated and stored in your data volume. Browsers will show a "connection not private" warning — click **Advanced → Proceed**. To use a trusted certificate (e.g. Let's Encrypt), set `TLS_CERT_PATH` and `TLS_KEY_PATH`.
+
+> 💡 **Tip:** Pin a specific version for stability — e.g. `ghcr.io/kotoxie/deadman:0.6.3`
 
 ---
 
@@ -128,6 +128,8 @@ services:
 docker compose up -d
 ```
 
+Open **https://localhost:6680** — accept the self-signed certificate warning.
+
 </details>
 
 ---
@@ -151,9 +153,9 @@ cp .env.example .env
 cd backend && node src/index.js
 ```
 
-Open **http://localhost:6680** — default dev password: `admin123`
+Open **https://localhost:6680** — accept the self-signed certificate warning on first run.
 
-The server runs the Express API and Vite dev server (with HMR) on a single port.
+The server runs the Express API and serves the frontend on a single HTTPS port.
 
 </details>
 
@@ -163,13 +165,15 @@ The server runs the Express API and Vite dev server (with HMR) on a single port.
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `PORT` | No | `6680` | HTTP server port |
-| `NODE_ENV` | No | `development` | `development` or `production` |
-| `MASTER_PASSWORD` | **Prod only** | `admin` (dev) | Master login password |
-| `SESSION_SECRET` | **Prod only** | Auto-generated (dev) | Session cookie signing secret — use `openssl rand -hex 32` |
-| `DB_ENCRYPTION_KEY` | **Prod only** | Auto-generated (dev) | Vault encryption key — use `openssl rand -hex 32` |
-| `DATA_DIR` | No | `./data` | SQLite database directory |
-| `SMTP_HOST` | No | — | SMTP hostname (e.g. `smtp.gmail.com`) |
+| `MASTER_PASSWORD` | **Yes** | — | Master login password (strong, unique) |
+| `SESSION_SECRET` | **Yes** | — | Signs session cookies to prevent forgery — use `openssl rand -hex 32`. Different from TLS: HTTPS encrypts the wire; this prevents cookie tampering. |
+| `DB_ENCRYPTION_KEY` | **Yes** | — | AES-256 vault encryption key — use `openssl rand -hex 32`. Must differ from `SESSION_SECRET`. |
+| `PORT` | No | `6680` | HTTPS server port |
+| `DATA_DIR` | No | `./data` | SQLite database and TLS cert directory |
+| `TLS_CERT_PATH` | No | — | Path to a custom TLS certificate (PEM). If omitted, a self-signed cert is auto-generated in `DATA_DIR/tls/`. |
+| `TLS_KEY_PATH` | No | — | Path to the private key matching `TLS_CERT_PATH`. |
+| `LOG_LEVEL` | No | `info` | `error`, `warn`, `info`, or `debug` |
+| `SMTP_HOST` | No | — | SMTP hostname (e.g. `smtp.gmail.com`). Can also be set via Settings UI. |
 | `SMTP_PORT` | No | `587` | SMTP port |
 | `SMTP_USER` | No | — | SMTP username/email |
 | `SMTP_PASS` | No | — | SMTP password or app password |
@@ -177,7 +181,9 @@ The server runs the Express API and Vite dev server (with HMR) on a single port.
 | `SMTP_SECURE` | No | `false` | `true` for port 465 (SSL) |
 | `TELEGRAM_BOT_TOKEN` | No | — | Bot token from [@BotFather](https://t.me/BotFather) |
 
-> 🔒 **Production safety:** The app refuses to start in production if `MASTER_PASSWORD`, `SESSION_SECRET`, or `DB_ENCRYPTION_KEY` are missing or set to defaults.
+> 🔒 **The app refuses to start if `MASTER_PASSWORD`, `SESSION_SECRET`, or `DB_ENCRYPTION_KEY` are missing or too weak.**
+>
+> 🔐 **TLS is always on.** A self-signed certificate is auto-generated on first start. Browsers will warn — click *Advanced → Proceed* or supply a trusted cert via `TLS_CERT_PATH`/`TLS_KEY_PATH`.
 
 SMTP and Telegram can also be configured from the **Settings UI** — values stored there take precedence and are encrypted in the database.
 

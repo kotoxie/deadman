@@ -12,6 +12,10 @@ services:
       - .env
     environment:
       - DATA_DIR=/app/data
+      # TLS cert is auto-generated on first start and stored in DATA_DIR/tls/
+      # To use a trusted cert instead, set TLS_CERT_PATH and TLS_KEY_PATH:
+      # - TLS_CERT_PATH=/app/data/tls/cert.pem
+      # - TLS_KEY_PATH=/app/data/tls/key.pem
 
 volumes:
   deadman_data:
