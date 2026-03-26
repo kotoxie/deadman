@@ -59,8 +59,8 @@ services:
       - "6680:6680"
     volumes:
       - ./deadman-data:/app/data
-    environment:
-      - DB_ENCRYPTION_KEY=generate-a-random-64-char-string   # openssl rand -hex 32
+    # environment:  # All optional — see README for details
+    #   - DB_ENCRYPTION_KEY=   # recommended: openssl rand -hex 32
 ```
 
 ```bash
@@ -162,7 +162,7 @@ The server runs the Express API and serves the frontend on a single HTTPS port.
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `DB_ENCRYPTION_KEY` | **Yes** | — | AES-256 vault encryption key — use `openssl rand -hex 32` |
+| `DB_ENCRYPTION_KEY` | No* | Auto-generated | AES-256 vault encryption key. If unset, auto-generated and stored in `DATA_DIR/encryption.key`. **Back up that file.** Set this variable for portability and to silence the in-app warning. Generate: `openssl rand -hex 32` |
 | `SESSION_SECRET` | No | Auto-generated | Session cookie signing key. Auto-generated on first start and stored in `DATA_DIR/session.secret`. Set only if you need a stable value across container recreations without a shared volume. |
 | `PORT` | No | `6680` | HTTPS server port |
 | `DATA_DIR` | No | `./data` | SQLite database, TLS cert, and session secret directory |
@@ -177,7 +177,7 @@ The server runs the Express API and serves the frontend on a single HTTPS port.
 | `SMTP_SECURE` | No | `false` | `true` for port 465 (SSL) |
 | `TELEGRAM_BOT_TOKEN` | No | — | Bot token from [@BotFather](https://t.me/BotFather) |
 
-> 🔒 **Only `DB_ENCRYPTION_KEY` is required.** On first start, open the app in your browser and you'll be prompted to create your master password — no env var needed.
+> ℹ️ **No required variables.** Everything has a safe default. For production use, set `DB_ENCRYPTION_KEY` to ensure your key is portable and backed up.
 >
 > 🔐 **TLS is always on.** A self-signed certificate is auto-generated on first start. Browsers will warn — click *Advanced → Proceed* or supply a trusted cert via `TLS_CERT_PATH`/`TLS_KEY_PATH`.
 

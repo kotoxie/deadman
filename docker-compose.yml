@@ -1,22 +1,14 @@
-version: '3.8'
 services:
   deadman:
     build: .
     container_name: deadman-switch
     restart: unless-stopped
     ports:
-      - "${PORT:-6680}:6680"
+      - 6680:6680
     volumes:
-      - deadman_data:/app/data
-    env_file:
-      - .env
+      - ./deadman_data:/app/data
     environment:
-      - DATA_DIR=/app/data
       # TLS cert is auto-generated on first start and stored in DATA_DIR/tls/
       # To use a trusted cert instead, set TLS_CERT_PATH and TLS_KEY_PATH:
       # - TLS_CERT_PATH=/app/data/tls/cert.pem
       # - TLS_KEY_PATH=/app/data/tls/key.pem
-
-volumes:
-  deadman_data:
-    driver: local
