@@ -7,8 +7,9 @@ import Button from '../components/ui/Button.jsx';
 import Badge from '../components/ui/Badge.jsx';
 import Modal from '../components/ui/Modal.jsx';
 import Input from '../components/ui/Input.jsx';
+import HealthWidget from '../components/dashboard/HealthWidget.jsx';
 import toast from 'react-hot-toast';
-import { Shield, Users, Clock, AlertTriangle, Play, Pause, Zap, CheckCircle2, Bell, Skull, Timer, TriangleAlert, ArrowRight } from 'lucide-react';
+import { Shield, Users, Clock, AlertTriangle, Play, Pause, Zap, CheckCircle2, Bell, Skull, Timer } from 'lucide-react';
 
 // diffMs = eventTime - now  →  positive = future, negative = past
 function formatTime(diffMs) {
@@ -23,44 +24,6 @@ function formatTime(diffMs) {
 
 function formatDateTime(ts) {
   return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function HealthWidget({ warnings }) {
-  if (!warnings || warnings.length === 0) return (
-    <Card className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-full bg-green-500/15 flex items-center justify-center shrink-0">
-        <CheckCircle2 size={16} className="text-green-400" />
-      </div>
-      <div>
-        <p className="text-sm font-medium text-white">Everything looks good</p>
-        <p className="text-xs text-gray-500">No configuration issues detected</p>
-      </div>
-    </Card>
-  );
-
-  return (
-    <Card>
-      <div className="flex items-center gap-2 mb-3">
-        <TriangleAlert size={16} className="text-yellow-400" />
-        <h3 className="font-semibold text-white">
-          {warnings.length} Configuration {warnings.length === 1 ? 'Issue' : 'Issues'} Detected
-        </h3>
-      </div>
-      <div className="space-y-2">
-        {warnings.map((w, i) => (
-          <Link
-            key={i}
-            to={w.link}
-            className="flex items-center gap-3 p-2.5 rounded-lg bg-yellow-500/5 border border-yellow-500/20 hover:bg-yellow-500/10 transition-colors group"
-          >
-            <TriangleAlert size={14} className="text-yellow-400 shrink-0" />
-            <span className="text-sm text-gray-300 flex-1">{w.message}</span>
-            <ArrowRight size={14} className="text-gray-600 group-hover:text-yellow-400 transition-colors shrink-0" />
-          </Link>
-        ))}
-      </div>
-    </Card>
-  );
 }
 
 function DeliveryTimeline({ checkin }) {
@@ -370,7 +333,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Health Widget */}
-      <HealthWidget warnings={health?.warnings} />
+      <HealthWidget health={health} />
 
       {/* Delivery Timeline */}
       <DeliveryTimeline checkin={checkin} />
