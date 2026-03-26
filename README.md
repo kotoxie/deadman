@@ -62,8 +62,7 @@ services:
     environment:
       - DATA_DIR=/app/data
       - MASTER_PASSWORD=change-me-to-something-strong
-      - SESSION_SECRET=generate-a-random-64-char-string
-      - DB_ENCRYPTION_KEY=generate-another-random-64-char-string
+      - DB_ENCRYPTION_KEY=generate-a-random-64-char-string
 ```
 
 ```bash
@@ -166,10 +165,10 @@ The server runs the Express API and serves the frontend on a single HTTPS port.
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `MASTER_PASSWORD` | **Yes** | — | Master login password (strong, unique) |
-| `SESSION_SECRET` | **Yes** | — | Signs session cookies to prevent forgery — use `openssl rand -hex 32`. Different from TLS: HTTPS encrypts the wire; this prevents cookie tampering. |
-| `DB_ENCRYPTION_KEY` | **Yes** | — | AES-256 vault encryption key — use `openssl rand -hex 32`. Must differ from `SESSION_SECRET`. |
+| `DB_ENCRYPTION_KEY` | **Yes** | — | AES-256 vault encryption key — use `openssl rand -hex 32` |
+| `SESSION_SECRET` | No | Auto-generated | Session cookie signing key. Auto-generated on first start and stored in `DATA_DIR/session.secret`. Set only if you need a stable value across container recreations without a shared volume. |
 | `PORT` | No | `6680` | HTTPS server port |
-| `DATA_DIR` | No | `./data` | SQLite database and TLS cert directory |
+| `DATA_DIR` | No | `./data` | SQLite database, TLS cert, and session secret directory |
 | `TLS_CERT_PATH` | No | — | Path to a custom TLS certificate (PEM). If omitted, a self-signed cert is auto-generated in `DATA_DIR/tls/`. |
 | `TLS_KEY_PATH` | No | — | Path to the private key matching `TLS_CERT_PATH`. |
 | `LOG_LEVEL` | No | `info` | `error`, `warn`, `info`, or `debug` |
@@ -181,7 +180,7 @@ The server runs the Express API and serves the frontend on a single HTTPS port.
 | `SMTP_SECURE` | No | `false` | `true` for port 465 (SSL) |
 | `TELEGRAM_BOT_TOKEN` | No | — | Bot token from [@BotFather](https://t.me/BotFather) |
 
-> 🔒 **The app refuses to start if `MASTER_PASSWORD`, `SESSION_SECRET`, or `DB_ENCRYPTION_KEY` are missing or too weak.**
+> 🔒 **The app refuses to start if `MASTER_PASSWORD` or `DB_ENCRYPTION_KEY` are missing or too weak.**
 >
 > 🔐 **TLS is always on.** A self-signed certificate is auto-generated on first start. Browsers will warn — click *Advanced → Proceed* or supply a trusted cert via `TLS_CERT_PATH`/`TLS_KEY_PATH`.
 
