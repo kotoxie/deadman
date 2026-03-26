@@ -46,15 +46,11 @@ function resolveSessionSecret() {
 const WEAK_PASSWORDS = ['admin', 'admin123', 'password', 'password123', '12345678',
   'change_me_to_a_strong_password'];
 
-const required = ['MASTER_PASSWORD', 'DB_ENCRYPTION_KEY'];
+const required = ['DB_ENCRYPTION_KEY'];
 const missing = required.filter(k => !process.env[k]);
 if (missing.length > 0) {
   console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
   console.error('Copy .env.example to .env and set all values before starting.');
-  process.exit(1);
-}
-if (WEAK_PASSWORDS.includes(process.env.MASTER_PASSWORD)) {
-  console.error('FATAL: MASTER_PASSWORD is too weak or is a known default. Choose a strong, unique password.');
   process.exit(1);
 }
 if (process.env.DB_ENCRYPTION_KEY.length < 32) {
@@ -70,10 +66,8 @@ const config = Object.freeze({
   port: parseInt(process.env.PORT || '6680', 10),
   logLevel: process.env.LOG_LEVEL || 'info',
   dataDir,
-  masterPassword: process.env.MASTER_PASSWORD,
   sessionSecret,
   dbEncryptionKey: process.env.DB_ENCRYPTION_KEY,
-  // Optional: paths to a custom TLS cert/key. If not set, a self-signed cert is auto-generated.
   tlsCertPath: process.env.TLS_CERT_PATH || null,
   tlsKeyPath:  process.env.TLS_KEY_PATH  || null,
 });

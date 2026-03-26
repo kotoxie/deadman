@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import config from '../config/index.js';
 import logger from '../utils/logger.js';
 import * as AuditLog from '../models/AuditLog.js';
 import * as User from '../models/User.js';
@@ -26,10 +25,12 @@ export function requireAuth(req, res, next) {
 }
 
 // ─── Password Hashing (scrypt) ──────────────────────────────────
-const SCRYPT_N = 8192;   // 2^13 — secure and low-memory Docker-friendly
+const SCRYPT_N = 8192;
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const KEY_LEN = 64;
+const MIN_PASSWORD_LENGTH = 12;
+const WEAK_PASSWORDS = ['admin', 'admin123', 'password', 'password123', '12345678', 'change_me_to_a_strong_password'];
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(32).toString('hex');
@@ -111,14 +112,13 @@ export function login(req, res) {
     return res.status(400).json({ error: 'Password is required' });
   }
 
-  // Check DB-stored hash first, fall back to env var
+  // Check if first-run setup is required (no password set yet)
   const user = User.getUser();
-  let valid = false;
-  if (user && user.password_hash) {
-    valid = verifyPassword(password, user.password_hash);
-  } else {
-    valid = safeCompare(password, config.masterPassword);
+  if (!user || !user.password_hash) {
+    return res.status(403).json({ error: 'No password configured. Please complete setup first.', setupRequired: true });
   }
+
+  const valid = verifyPassword(password, user.password_hash);
 
   if (!valid) {
     logger.warn(`Failed login attempt: invalid password (IP: ${ip})`);
@@ -219,54 +219,47 @@ export function logout(req, res) {
 
 // ─── Auth Check ─────────────────────────────────────────────────
 export function checkAuth(req, res) {
+  const user = User.getUser();
+  const setupRequired = !user || !user.password_hash;
   const authenticated = !!(req.session && req.session.authenticated);
   let passwordChangeRequired = false;
-  if (authenticated) {
-    const user = User.getUser();
+  if (authenticated && !setupRequired) {
     passwordChangeRequired = !user.password_changed;
   }
-  // Include the CSRF token so the frontend can attach it to mutating requests
-  res.json({ authenticated, passwordChangeRequired, csrfToken: req.session?.csrfToken || null });
+  res.json({ authenticated, passwordChangeRequired, setupRequired, csrfToken: req.session?.csrfToken || null });
 }
 
 // ─── Change Password ────────────────────────────────────────────
 export function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body;
 
-  // Always require current password verification
   if (!currentPassword || typeof currentPassword !== 'string') {
     return res.status(400).json({ error: 'Current password is required' });
   }
   if (!newPassword || typeof newPassword !== 'string') {
     return res.status(400).json({ error: 'New password is required' });
   }
-  if (newPassword.length < 12) {
-    return res.status(400).json({ error: 'Password must be at least 12 characters' });
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
   }
-  const WEAK_PASSWORDS = ['admin', 'admin123', 'password', 'password123', '12345678', 'change_me_to_a_strong_password'];
   if (WEAK_PASSWORDS.includes(newPassword)) {
     return res.status(400).json({ error: 'Password is too weak. Choose a strong, unique password.' });
   }
 
-  // Verify current password — check DB hash first, fall back to env var
   const user = User.getUser();
-  let currentValid = false;
-  if (user && user.password_hash) {
-    currentValid = verifyPassword(currentPassword, user.password_hash);
-  } else {
-    currentValid = safeCompare(currentPassword, config.masterPassword);
+  if (!user || !user.password_hash) {
+    return res.status(400).json({ error: 'No password configured. Please use the setup page.' });
   }
+  const currentValid = verifyPassword(currentPassword, user.password_hash);
   if (!currentValid) {
     AuditLog.log('Password change failed: wrong current password', 'auth', 'warning', null, req.ip);
     return res.status(401).json({ error: 'Current password is incorrect' });
   }
 
-  // Set new password and increment session version (invalidates all other sessions)
   const hashed = hashPassword(newPassword);
   User.setPassword(hashed);
   User.incrementSessionVersion();
 
-  // Update current session with new version so this session stays valid
   const updatedUser = User.getUser();
   req.session.sessionVersion = updatedUser.session_version;
 
@@ -280,4 +273,39 @@ export function skipPasswordChange(req, res) {
   User.markPasswordChanged();
   AuditLog.log('Password change skipped', 'auth', 'info', null, req.ip);
   res.json({ success: true });
+}
+
+// ─── First-Run Setup Password ───────────────────────────────────
+export function setupPassword(req, res) {
+  const user = User.getUser();
+  if (user && user.password_hash) {
+    return res.status(400).json({ error: 'Password already configured. Use the change-password form instead.' });
+  }
+
+  const { password, confirmPassword } = req.body;
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Password is required' });
+  }
+  if (!confirmPassword || password !== confirmPassword) {
+    return res.status(400).json({ error: 'Passwords do not match' });
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+  }
+  if (WEAK_PASSWORDS.includes(password)) {
+    return res.status(400).json({ error: 'Password is too common or weak. Choose a stronger one.' });
+  }
+
+  const hashed = hashPassword(password);
+  User.setPassword(hashed);
+  User.markPasswordChanged();
+
+  // Create authenticated session immediately after setup
+  req.session.authenticated = true;
+  req.session.sessionVersion = User.getUser().session_version;
+  req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+
+  AuditLog.log('Initial password set — first-run setup complete', 'auth', 'info', null, req.ip);
+  logger.info(`First-run setup: password configured (IP: ${req.ip})`);
+  res.json({ success: true, csrfToken: req.session.csrfToken });
 }

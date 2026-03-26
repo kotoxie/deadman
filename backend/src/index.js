@@ -13,7 +13,7 @@ import config from './config/index.js';
 import { loadTlsCredentials } from './config/tls.js';
 import { initDatabase, closeDatabase } from './config/database.js';
 import { SQLiteSessionStore } from './config/sessionStore.js';
-import { requireAuth, login, logout, checkAuth, changePassword, skipPasswordChange } from './middleware/auth.js';
+import { requireAuth, login, logout, checkAuth, changePassword, skipPasswordChange, setupPassword } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initializeEmailService } from './services/emailService.js';
 import { initializeTelegram } from './services/telegramService.js';
@@ -112,6 +112,7 @@ async function main() {
   app.post('/api/auth/login', login);
   app.post('/api/auth/logout', logout);
   app.get('/api/auth/check', checkAuth);
+  app.post('/api/auth/setup', setupPassword);  // public: first-run only
   app.post('/api/auth/change-password', requireAuth, changePassword);
   app.post('/api/auth/skip-password-change', requireAuth, skipPasswordChange);
 
@@ -121,8 +122,8 @@ async function main() {
   // Safe methods are exempt because they carry no side-effects.
   function csrfProtect(req, res, next) {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-    // Public auth endpoints that have their own protections (login, logout)
-    if (req.path === '/api/auth/login' || req.path === '/api/auth/logout') return next();
+    // Public auth endpoints that have their own protections (login, logout, setup)
+    if (['/api/auth/login', '/api/auth/logout', '/api/auth/setup'].includes(req.path)) return next();
     const sessionToken = req.session?.csrfToken;
     const headerToken  = req.headers['x-csrf-token'];
     if (!sessionToken || !headerToken) {

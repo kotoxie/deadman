@@ -5,6 +5,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext.jsx';
 import AppLayout from './components/layout/AppLayout.jsx';
 import ChangePasswordModal from './components/features/ChangePasswordModal.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import SetupPage from './pages/SetupPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import VaultListPage from './pages/VaultListPage.jsx';
 import VaultItemFormPage from './pages/VaultItemFormPage.jsx';
@@ -21,16 +22,25 @@ import SettingsSmtpPage from './pages/SettingsSmtpPage.jsx';
 import SettingsTelegramPage from './pages/SettingsTelegramPage.jsx';
 
 function ProtectedRoute({ children }) {
-  const { authenticated, loading } = useAuth();
+  const { authenticated, setupRequired, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>;
+  if (setupRequired) return <Navigate to="/setup" replace />;
   if (!authenticated) return <Navigate to="/login" replace />;
   return children;
 }
 
 function PublicRoute({ children }) {
-  const { authenticated, loading } = useAuth();
+  const { authenticated, setupRequired, loading } = useAuth();
   if (loading) return null;
+  if (setupRequired) return <Navigate to="/setup" replace />;
   if (authenticated) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
+function SetupRoute({ children }) {
+  const { setupRequired, loading } = useAuth();
+  if (loading) return null;
+  if (!setupRequired) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -49,6 +59,7 @@ function FirstLoginPasswordPrompt() {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/setup" element={<SetupRoute><SetupPage /></SetupRoute>} />
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
@@ -102,3 +113,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+

@@ -6,8 +6,8 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
+  const [setupRequired, setSetupRequired] = useState(false);
   const [loading, setLoading] = useState(true);
-  // Keep a ref so the api interceptor always reads the latest token without a stale closure
   const csrfRef = useRef(null);
 
   const check = useCallback(async () => {
@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
       const res = await authCheck();
       setAuthenticated(res.data.authenticated);
       setPasswordChangeRequired(res.data.passwordChangeRequired || false);
-      // Propagate the CSRF token to the Axios instance
+      setSetupRequired(res.data.setupRequired || false);
       if (res.data.csrfToken) {
         csrfRef.current = res.data.csrfToken;
         setCsrfToken(res.data.csrfToken);
@@ -23,6 +23,7 @@ export function AuthProvider({ children }) {
     } catch {
       setAuthenticated(false);
       setPasswordChangeRequired(false);
+      setSetupRequired(false);
     } finally {
       setLoading(false);
     }
@@ -30,7 +31,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     check();
-    const handler = () => { setAuthenticated(false); setPasswordChangeRequired(false); };
+    const handler = () => { setAuthenticated(false); setPasswordChangeRequired(false); setSetupRequired(false); };
     window.addEventListener('auth:logout', handler);
     return () => window.removeEventListener('auth:logout', handler);
   }, [check]);
@@ -39,7 +40,6 @@ export function AuthProvider({ children }) {
     const res = await authLogin(password);
     if (res.data.success) {
       setAuthenticated(true);
-      // Re-check to get passwordChangeRequired flag
       await check();
       return true;
     }
@@ -50,14 +50,22 @@ export function AuthProvider({ children }) {
     await authLogout();
     setAuthenticated(false);
     setPasswordChangeRequired(false);
+    setSetupRequired(false);
   };
 
   const clearPasswordChangeRequired = () => {
     setPasswordChangeRequired(false);
   };
 
+  const completeSetup = (csrfToken) => {
+    setCsrfToken(csrfToken);
+    setSetupRequired(false);
+    setAuthenticated(true);
+    setPasswordChangeRequired(false);
+  };
+
   return (
-    <AuthContext.Provider value={{ authenticated, passwordChangeRequired, loading, login, logout, clearPasswordChangeRequired }}>
+    <AuthContext.Provider value={{ authenticated, passwordChangeRequired, setupRequired, loading, login, logout, clearPasswordChangeRequired, completeSetup }}>
       {children}
     </AuthContext.Provider>
   );
