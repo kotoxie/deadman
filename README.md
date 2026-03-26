@@ -59,8 +59,12 @@ services:
       - "6680:6680"
     volumes:
       - ./deadman-data:/app/data
-    # environment:  # All optional — see README for details
-    #   - DB_ENCRYPTION_KEY=   # recommended: openssl rand -hex 32
+    environment:
+      # Recommended: set a stable encryption key so your vault is portable.
+      # Generate one with: openssl rand -hex 32
+      # If omitted, a key is auto-generated and stored in the data volume,
+      # and a warning banner will appear in the app until you set this.
+      - DB_ENCRYPTION_KEY=
 ```
 
 ```bash
@@ -71,7 +75,7 @@ Then open **https://localhost:6680** 🎉
 
 > ⚠️ **Self-signed certificate:** On first start a TLS certificate is auto-generated and stored in your data volume. Browsers will show a "connection not private" warning — click **Advanced → Proceed**. To use a trusted certificate (e.g. Let's Encrypt), set `TLS_CERT_PATH` and `TLS_KEY_PATH`.
 
-> 💡 **Tip:** Pin a specific version for stability — e.g. `ghcr.io/kotoxie/deadman:0.6.3`
+> 💡 **Tip:** Pin a specific version for stability — e.g. `ghcr.io/kotoxie/deadman:latest`
 
 ---
 
