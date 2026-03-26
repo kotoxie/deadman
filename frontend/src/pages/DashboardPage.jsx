@@ -9,7 +9,10 @@ import Modal from '../components/ui/Modal.jsx';
 import Input from '../components/ui/Input.jsx';
 import HealthWidget from '../components/dashboard/HealthWidget.jsx';
 import toast from 'react-hot-toast';
-import { Shield, Users, Clock, AlertTriangle, Play, Pause, Zap, CheckCircle2, Bell, Skull, Timer } from 'lucide-react';
+import {
+  Shield, Users, Clock, AlertTriangle, Play, Pause, Zap, CheckCircle2,
+  Bell, Skull, Timer, ShieldAlert, ChevronDown, ChevronUp, X,
+} from 'lucide-react';
 
 // diffMs = eventTime - now  →  positive = future, negative = past
 function formatTime(diffMs) {
@@ -26,7 +29,86 @@ function formatDateTime(ts) {
   return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+// ── Health drawer button (nudges when score < 100) ─────────────────────────
+function HealthButton({ health, onClick }) {
+  if (!health) return null;
+  const { score = 100, warnings = [] } = health;
+  const critical = warnings.some(w => w.severity === 'critical');
+  const healthy  = score === 100;
+
+  const color = critical ? 'text-red-400 bg-red-500/10 border-red-500/40 hover:bg-red-500/20'
+              : !healthy  ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/40 hover:bg-yellow-500/20'
+                          : 'text-green-400 bg-green-500/10 border-green-500/40 hover:bg-green-500/20';
+  const Icon = critical ? ShieldAlert : healthy ? CheckCircle2 : ShieldAlert;
+
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${color}`}
+    >
+      {/* Pulse ring when not healthy */}
+      {!healthy && (
+        <span className="absolute -inset-0.5 rounded-lg animate-ping opacity-20 bg-current pointer-events-none" />
+      )}
+      <Icon size={15} />
+      <span>Health</span>
+      <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+        critical ? 'bg-red-500/25 text-red-300' :
+        !healthy  ? 'bg-yellow-500/25 text-yellow-300' :
+                    'bg-green-500/25 text-green-300'
+      }`}>{score}%</span>
+    </button>
+  );
+}
+
+// ── Health flyout drawer ───────────────────────────────────────────────────
+function HealthDrawer({ health, open, onClose }) {
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      />
+      {/* Panel */}
+      <div
+        className={`fixed top-0 right-0 h-full z-50 w-full max-w-md bg-surface border-l border-border shadow-2xl
+          flex flex-col transition-transform duration-300 ease-in-out
+          ${open ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <ShieldAlert size={16} className="text-brand" />
+            <span className="font-semibold text-white">System Health</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-surface-lighter transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        {/* Drawer body — scrollable */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <HealthWidget health={health} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Delivery timeline (compact by default, expandable) ─────────────────────
 function DeliveryTimeline({ checkin }) {
+  const [expanded, setExpanded] = useState(false);
   const now = Date.now();
   const lastCheckinTime = new Date(checkin.lastCheckinAt).getTime();
   const deadlineTime   = new Date(checkin.nextDeadlineAt).getTime();
@@ -61,33 +143,34 @@ function DeliveryTimeline({ checkin }) {
 
   const nextEvent = events.find(e => e.time > now);
 
-  // Only 3 anchor labels on the bar — evenly spaced, never overlap
   const anchorLabels = [
-    { key: 'checkin',  time: lastCheckinTime, label: 'Check-in', anchor: 'left'  },
+    { key: 'checkin',  time: lastCheckinTime, label: 'Check-in', anchor: 'left'   },
     { key: 'deadline', time: deadlineTime,    label: 'Deadline', anchor: 'center' },
-    { key: 'delivery', time: graceEndTime,    label: 'Delivery', anchor: 'right' },
+    { key: 'delivery', time: graceEndTime,    label: 'Delivery', anchor: 'right'  },
   ];
 
   return (
     <Card>
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Timer size={17} className="text-brand" />
-          <h3 className="font-semibold text-white">Delivery Timeline</h3>
+          <Timer size={15} className="text-brand" />
+          <h3 className="font-semibold text-white text-sm">Delivery Timeline</h3>
+          <span className="text-xs text-gray-500">{checkin.intervalDays}d cycle · {checkin.gracePeriodHours}h grace</span>
         </div>
-        <span className="text-xs text-gray-500">
-          {checkin.intervalDays}d cycle · {checkin.gracePeriodHours}h grace
-        </span>
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors"
+        >
+          {expanded ? <><ChevronUp size={13} /> Collapse</> : <><ChevronDown size={13} /> Details</>}
+        </button>
       </div>
 
       {/* ── Progress bar ── */}
-      <div className="relative" style={{ paddingTop: '28px', paddingBottom: '28px' }}>
-
-        {/* Track background */}
-        <div className="relative h-2 rounded-full bg-white/5">
+      <div className="relative" style={{ paddingTop: '26px', paddingBottom: expanded ? '26px' : '22px' }}>
+        {/* Track */}
+        <div className="relative h-1.5 rounded-full bg-white/5">
           <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-500/15 via-yellow-500/15 to-red-500/15" />
-          {/* Filled portion */}
           <div
             className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
             style={{
@@ -103,110 +186,75 @@ function DeliveryTimeline({ checkin }) {
 
         {/* Event dots */}
         {events.map((ev) => {
-          const pos   = getPos(ev.time);
-          const past  = now > ev.time;
+          const pos  = getPos(ev.time);
+          const past = now > ev.time;
           const isNxt = ev.key === nextEvent?.key;
-          const c     = cfg[ev.type];
+          const c    = cfg[ev.type];
           return (
-            <div
-              key={ev.key}
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
-              style={{ left: `${pos}%` }}
-            >
+            <div key={ev.key} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10" style={{ left: `${pos}%` }}>
               <div className={`rounded-full border-2 border-[#0f1117] transition-all ${
-                past  ? `w-3 h-3 ${c.dotFill}` :
-                isNxt ? `w-4 h-4 bg-[#0f1117] ring-2 ${c.ring}` :
-                        'w-3 h-3 bg-[#1e2433] border-white/15'
+                past  ? `w-2.5 h-2.5 ${c.dotFill}` :
+                isNxt ? `w-3.5 h-3.5 bg-[#0f1117] ring-2 ${c.ring}` :
+                        'w-2.5 h-2.5 bg-[#1e2433] border-white/15'
               }`} />
             </div>
           );
         })}
 
-        {/* NOW pill + stem */}
+        {/* NOW pill */}
         {!checkin.isPaused && nowPos > 0 && nowPos < 100 && (
-          <div
-            className="absolute top-1/2 z-20 -translate-x-1/2 flex flex-col items-center pointer-events-none"
-            style={{ left: `${nowPos}%` }}
-          >
+          <div className="absolute top-1/2 z-20 -translate-x-1/2 flex flex-col items-center pointer-events-none" style={{ left: `${nowPos}%` }}>
             <div className="mb-0.5 -translate-y-full flex flex-col items-center">
-              <span className="bg-white text-black text-[9px] font-black px-2 py-0.5 rounded tracking-widest shadow-xl mb-1 whitespace-nowrap">
-                NOW
-              </span>
-              <div className="w-px h-4 bg-white/50" />
+              <span className="bg-white text-black text-[8px] font-black px-1.5 py-0.5 rounded tracking-widest shadow-xl mb-1 whitespace-nowrap">NOW</span>
+              <div className="w-px h-3 bg-white/50" />
             </div>
           </div>
         )}
 
-        {/* Anchor labels below bar — 3 only, never overlap */}
+        {/* Anchor labels */}
         {anchorLabels.map((al) => {
           const pos  = getPos(al.time);
           const past = now > al.time;
           const c    = cfg[al.key === 'checkin' ? 'checkin' : al.key === 'deadline' ? 'deadline' : 'delivery'];
-          // left-anchor: don't shift; center: shift -50%; right-anchor: shift -100%
           const translateClass = al.anchor === 'left' ? '' : al.anchor === 'right' ? '-translate-x-full' : '-translate-x-1/2';
           const alignClass     = al.anchor === 'left' ? 'items-start' : al.anchor === 'right' ? 'items-end' : 'items-center';
           return (
-            <div
-              key={`al-${al.key}`}
-              className={`absolute top-1/2 flex flex-col ${alignClass} ${translateClass}`}
-              style={{ left: `${pos}%` }}
-            >
-              <div className="w-px h-3 bg-white/10 mt-1" />
-              <span className={`whitespace-nowrap text-[10px] font-semibold mt-0.5 ${past ? 'text-gray-600' : c.color}`}>
-                {al.label}
-              </span>
-              <span className={`whitespace-nowrap text-[9px] mt-0.5 ${past ? 'text-gray-700' : 'text-gray-500'}`}>
-                {formatTime(al.time - now)}
-              </span>
+            <div key={`al-${al.key}`} className={`absolute top-1/2 flex flex-col ${alignClass} ${translateClass}`} style={{ left: `${pos}%` }}>
+              <div className="w-px h-2.5 bg-white/10 mt-0.5" />
+              <span className={`whitespace-nowrap text-[9px] font-semibold mt-0.5 ${past ? 'text-gray-600' : c.color}`}>{al.label}</span>
+              <span className={`whitespace-nowrap text-[8px] mt-0.5 ${past ? 'text-gray-700' : 'text-gray-500'}`}>{formatTime(al.time - now)}</span>
             </div>
           );
         })}
       </div>
 
-      {/* ── Event list ── */}
-      <div className="mt-1 border-t border-white/5 pt-3 space-y-0.5">
-        {events.map((ev) => {
-          const past  = now > ev.time;
-          const isNxt = ev.key === nextEvent?.key;
-          const c     = cfg[ev.type];
-          const Icon  = c.icon;
-          return (
-            <div
-              key={`row-${ev.key}`}
-              className={`flex items-center gap-3 px-2 py-2 rounded-lg transition-colors ${
-                isNxt ? 'bg-white/5 border border-white/8' : ''
-              }`}
-            >
-              {/* Icon bubble */}
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${past ? 'bg-white/5' : c.iconBg}`}>
-                <Icon size={12} className={past ? 'text-gray-600' : c.color} />
+      {/* ── Expanded event list ── */}
+      {expanded && (
+        <div className="mt-1 border-t border-white/5 pt-2 space-y-0.5">
+          {events.map((ev) => {
+            const past  = now > ev.time;
+            const isNxt = ev.key === nextEvent?.key;
+            const c     = cfg[ev.type];
+            const Icon  = c.icon;
+            return (
+              <div
+                key={`row-${ev.key}`}
+                className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-colors ${isNxt ? 'bg-white/5 border border-white/8' : ''}`}
+              >
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${past ? 'bg-white/5' : c.iconBg}`}>
+                  <Icon size={11} className={past ? 'text-gray-600' : c.color} />
+                </div>
+                <span className={`text-xs flex-1 min-w-0 truncate ${past ? 'text-gray-500' : 'text-gray-200'}`}>{ev.label}</span>
+                <span className={`text-xs tabular-nums hidden sm:block ${past ? 'text-gray-700' : 'text-gray-500'}`}>{formatDateTime(ev.time)}</span>
+                <span className={`text-xs tabular-nums w-14 text-right font-medium ${past ? 'text-gray-600' : c.color}`}>{formatTime(ev.time - now)}</span>
+                {isNxt && (
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-brand bg-brand/15 px-1.5 py-0.5 rounded whitespace-nowrap">Next</span>
+                )}
               </div>
-
-              {/* Label */}
-              <span className={`text-sm flex-1 min-w-0 truncate ${past ? 'text-gray-500' : 'text-gray-200'}`}>
-                {ev.label}
-              </span>
-
-              {/* Date */}
-              <span className={`text-xs tabular-nums hidden sm:block ${past ? 'text-gray-700' : 'text-gray-500'}`}>
-                {formatDateTime(ev.time)}
-              </span>
-
-              {/* Relative time */}
-              <span className={`text-xs tabular-nums w-16 text-right font-medium ${past ? 'text-gray-600' : c.color}`}>
-                {formatTime(ev.time - now)}
-              </span>
-
-              {/* Next badge */}
-              {isNxt && (
-                <span className="text-[9px] font-bold uppercase tracking-wider text-brand bg-brand/15 px-1.5 py-0.5 rounded whitespace-nowrap">
-                  Next
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 }
@@ -216,6 +264,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [panicOpen, setPanicOpen] = useState(false);
   const [panicConfirm, setPanicConfirm] = useState('');
+  const [healthOpen, setHealthOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -271,81 +320,83 @@ export default function DashboardPage() {
       : 'text-green-400';
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <h2 className="text-2xl font-bold text-white">Dashboard</h2>
+    <div className="space-y-4 max-w-5xl">
+      {/* ── Page header ── */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-white">Dashboard</h2>
+        <HealthButton health={health} onClick={() => setHealthOpen(true)} />
+      </div>
 
-      {/* Countdown Timer */}
-      <Card className="text-center py-8">
-        {checkin.isPaused ? (
-          <div className="text-3xl font-bold text-yellow-400">PAUSED</div>
-        ) : (
-          <div className={`text-5xl font-mono font-bold ${timerColor}`}>
-            {String(countdown.days).padStart(2, '0')}:{String(countdown.hours).padStart(2, '0')}:
-            {String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
+      {/* ── Compact timer + stats ── */}
+      <Card>
+        <div className="flex items-center gap-5">
+          {/* Timer + actions */}
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-1">
+              {checkin.isPaused ? 'Status' : 'Time Until Delivery'}
+            </p>
+            {checkin.isPaused ? (
+              <div className="text-2xl font-bold text-yellow-400">PAUSED</div>
+            ) : (
+              <div className={`text-3xl font-mono font-bold tabular-nums leading-none ${timerColor}`}>
+                {String(countdown.days).padStart(2, '0')}:{String(countdown.hours).padStart(2, '0')}:
+                {String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
+              </div>
+            )}
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <Button size="sm" onClick={handleCheckin}>
+                <Clock size={13} /> Check In
+              </Button>
+              <Button size="sm" variant={checkin.isPaused ? 'secondary' : 'outline'} onClick={handlePause}>
+                {checkin.isPaused ? <><Play size={12} /> Resume</> : <><Pause size={12} /> Pause</>}
+              </Button>
+              <Button size="sm" variant="danger" onClick={() => setPanicOpen(true)}>
+                <Zap size={12} /> Panic
+              </Button>
+            </div>
           </div>
-        )}
-        <p className="text-gray-400 mt-2 text-sm">
-          {checkin.isPaused ? 'Countdown is paused' : 'Time remaining until delivery'}
-        </p>
 
-        <div className="flex items-center justify-center gap-3 mt-6">
-          <Button onClick={handleCheckin} size="lg">
-            <Clock size={18} /> Check In
-          </Button>
-          <Button variant={checkin.isPaused ? 'secondary' : 'outline'} onClick={handlePause}>
-            {checkin.isPaused ? <><Play size={16} /> Resume</> : <><Pause size={16} /> Pause</>}
-          </Button>
-          <Button variant="danger" onClick={() => setPanicOpen(true)}>
-            <Zap size={16} /> Panic
-          </Button>
+          {/* Divider */}
+          <div className="hidden sm:block w-px self-stretch bg-white/8" />
+
+          {/* Mini stats */}
+          <div className="hidden sm:flex gap-6 shrink-0">
+            <div className="text-center">
+              <p className="text-xl font-bold text-white">{vault.totalItems}</p>
+              <div className="flex items-center gap-1 justify-center mt-0.5">
+                <Shield size={10} className="text-blue-400" />
+                <span className="text-[10px] text-gray-500">Vault</span>
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-white">{recipients.total}</p>
+              <div className="flex items-center gap-1 justify-center mt-0.5">
+                <Users size={10} className="text-purple-400" />
+                <span className="text-[10px] text-gray-500">Recipients</span>
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-white">{checkin.intervalDays}d</p>
+              <div className="flex items-center gap-1 justify-center mt-0.5">
+                <Clock size={10} className="text-green-400" />
+                <span className="text-[10px] text-gray-500">Interval</span>
+              </div>
+            </div>
+          </div>
         </div>
       </Card>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <div className="flex items-center gap-3">
-            <Shield className="text-blue-400" size={24} />
-            <div>
-              <p className="text-2xl font-bold text-white">{vault.totalItems}</p>
-              <p className="text-sm text-gray-400">Vault Items</p>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-3">
-            <Users className="text-purple-400" size={24} />
-            <div>
-              <p className="text-2xl font-bold text-white">{recipients.total}</p>
-              <p className="text-sm text-gray-400">Recipients</p>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-3">
-            <Clock className="text-green-400" size={24} />
-            <div>
-              <p className="text-2xl font-bold text-white">{checkin.intervalDays}d</p>
-              <p className="text-sm text-gray-400">Check-in Interval</p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Health Widget */}
-      <HealthWidget health={health} />
-
-      {/* Delivery Timeline */}
+      {/* ── Delivery Timeline (compact, expandable) ── */}
       <DeliveryTimeline checkin={checkin} />
 
-      {/* Recent Deliveries */}
+      {/* ── Recent Deliveries ── */}
       {recentLogs.length > 0 && (
         <Card>
-          <h3 className="font-semibold text-white mb-3">Recent Deliveries</h3>
+          <h3 className="font-semibold text-white text-sm mb-3">Recent Deliveries</h3>
           <div className="space-y-2">
             {recentLogs.map(log => (
               <div key={log.id} className="flex items-center justify-between text-sm">
-                <span className="text-gray-300">{log.recipient_name} - {log.item_name}</span>
+                <span className="text-gray-300 text-xs">{log.recipient_name} — {log.item_name}</span>
                 <div className="flex items-center gap-2">
                   <Badge variant={log.status === 'success' ? 'success' : log.status === 'failed' ? 'error' : 'warning'}>
                     {log.status}
@@ -358,7 +409,10 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Panic Modal */}
+      {/* ── Health drawer ── */}
+      <HealthDrawer health={health} open={healthOpen} onClose={() => setHealthOpen(false)} />
+
+      {/* ── Panic modal ── */}
       <Modal open={panicOpen} onClose={() => { setPanicOpen(false); setPanicConfirm(''); }} title="Trigger Delivery">
         <div className="space-y-4">
           <div className="flex items-start gap-3 p-3 bg-red-900/20 border border-red-800 rounded-lg">
