@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, KeyRound, ShieldCheck, Lock, Network } from 'lucide-react';
+import { Save, KeyRound, ShieldCheck, Lock, Network, Timer } from 'lucide-react';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import Input from '../components/ui/Input.jsx';
@@ -123,6 +123,28 @@ export default function SettingsSecurityPage() {
               </p>
             </div>
           )}
+        </div>
+      </Card>
+
+      {/* Session */}
+      <Card className="space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Timer size={14} className="text-gray-400" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Session</span>
+        </div>
+        <div>
+          <Input
+            label="Idle Timeout (minutes)"
+            type="number"
+            min={5}
+            max={1440}
+            step={5}
+            value={settings.session_idle_timeout_minutes || '60'}
+            onChange={e => update('session_idle_timeout_minutes', e.target.value)}
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Automatically log out after this many minutes of inactivity. Default is 60 minutes. Min 5, max 1440 (24 h).
+          </p>
         </div>
       </Card>
 

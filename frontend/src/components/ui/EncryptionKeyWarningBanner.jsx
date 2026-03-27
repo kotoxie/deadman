@@ -32,8 +32,8 @@ export default function EncryptionKeyWarningBanner() {
         <p className="text-xs text-red-400/80 mt-1 leading-relaxed">
           Your vault encryption key was auto-generated and stored at{' '}
           <code className="font-mono text-xs bg-red-900/40 px-1 rounded">/app/data/encryption.key</code>.{' '}
-          <strong className="text-red-300">Back it up immediately.</strong>{' '}
-          If the file is lost, your encrypted vault cannot be recovered. Set{' '}
+          <strong className="text-red-300">**Please**</strong>{' '}
+          set{' '}
           <code className="font-mono text-xs bg-red-900/40 px-1 rounded">DB_ENCRYPTION_KEY</code> in your environment to silence this warning permanently.
         </p>
       </div>
