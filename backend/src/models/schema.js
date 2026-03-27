@@ -1,70 +1,12 @@
-// ─── Migration helpers ────────────────────────────────────────────
-function hasColumn(db, table, col) {
-  return db.prepare(`PRAGMA table_info("${table}")`).all().some(r => r.name === col);
-}
-
-// ─── Versioned migration registry ────────────────────────────────
+// ─── Single consolidated baseline marker ─────────────────────────
+// All columns and tables are defined directly in initializeSchema below.
+// This entry marks the DB as having the v1 consolidated schema applied.
+// Existing DBs that ran migrations 1-7 will get version 8 as a no-op.
+// New DBs have all columns from the start and get version 8 as a baseline marker.
 const MIGRATIONS = [
   {
-    version: 1, name: 'add_password_fields',
-    up: (db) => {
-      if (!hasColumn(db, 'users', 'password_hash')) {
-        db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
-        db.exec('ALTER TABLE users ADD COLUMN password_changed INTEGER NOT NULL DEFAULT 0');
-      }
-    }
-  },
-  {
-    version: 2, name: 'add_session_version',
-    up: (db) => {
-      if (!hasColumn(db, 'users', 'session_version'))
-        db.exec('ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0');
-    }
-  },
-  {
-    version: 3, name: 'add_ip_blocks_table',
-    up: (db) => db.exec(`
-      CREATE TABLE IF NOT EXISTS ip_blocks (
-        ip TEXT PRIMARY KEY,
-        failures INTEGER NOT NULL DEFAULT 0,
-        first_failure_at TEXT NOT NULL DEFAULT (datetime('now')),
-        blocked_at TEXT,
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )
-    `)
-  },
-  {
-    version: 4, name: 'add_auto_assign',
-    up: (db) => {
-      if (!hasColumn(db, 'recipients', 'auto_assign'))
-        db.exec('ALTER TABLE recipients ADD COLUMN auto_assign INTEGER NOT NULL DEFAULT 0');
-    }
-  },
-  {
-    version: 5, name: 'add_delivery_triggered_at',
-    up: (db) => {
-      if (!hasColumn(db, 'users', 'delivery_triggered_at'))
-        db.exec('ALTER TABLE users ADD COLUMN delivery_triggered_at TEXT');
-    }
-  },
-  {
-    version: 6, name: 'add_delivery_log_next_retry_at',
-    up: (db) => {
-      if (!hasColumn(db, 'delivery_logs', 'next_retry_at'))
-        db.exec('ALTER TABLE delivery_logs ADD COLUMN next_retry_at TEXT');
-    }
-  },
-  {
-    version: 7, name: 'add_indexes',
-    up: (db) => db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_vault_items_user_id ON vault_items(user_id);
-      CREATE INDEX IF NOT EXISTS idx_recipients_user_id ON recipients(user_id);
-      CREATE INDEX IF NOT EXISTS idx_delivery_logs_recipient_id ON delivery_logs(recipient_id);
-      CREATE INDEX IF NOT EXISTS idx_delivery_logs_status ON delivery_logs(status);
-      CREATE INDEX IF NOT EXISTS idx_warning_logs_user_id ON warning_logs(user_id);
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_category ON audit_logs(category);
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
-    `)
+    version: 8, name: 'v1_consolidated_baseline',
+    up: (_db) => { /* no-op — full schema is in initializeSchema */ }
   },
 ];
 
@@ -100,6 +42,10 @@ export function initializeSchema(db) {
       warning_schedule TEXT NOT NULL DEFAULT '[72,48,24,12,6,1]',
       master_key_salt TEXT NOT NULL DEFAULT '',
       master_key_check TEXT NOT NULL DEFAULT '',
+      password_hash TEXT,
+      password_changed INTEGER NOT NULL DEFAULT 0,
+      session_version INTEGER NOT NULL DEFAULT 0,
+      delivery_triggered_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -127,6 +73,7 @@ export function initializeSchema(db) {
       email TEXT,
       telegram_chat_id TEXT,
       webhook_url TEXT,
+      auto_assign INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -149,12 +96,21 @@ export function initializeSchema(db) {
       status TEXT NOT NULL CHECK(status IN ('pending','success','failed','retrying')) DEFAULT 'pending',
       attempt_count INTEGER NOT NULL DEFAULT 0,
       last_attempt_at TEXT,
+      next_retry_at TEXT,
       error_message TEXT,
       triggered_by TEXT NOT NULL CHECK(triggered_by IN ('deadline','panic','manual_test')),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (recipient_id) REFERENCES recipients(id) ON DELETE CASCADE,
       FOREIGN KEY (vault_item_id) REFERENCES vault_items(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS ip_blocks (
+      ip TEXT PRIMARY KEY,
+      failures INTEGER NOT NULL DEFAULT 0,
+      first_failure_at TEXT NOT NULL DEFAULT (datetime('now')),
+      blocked_at TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS settings (
@@ -183,6 +139,14 @@ export function initializeSchema(db) {
       ip_address TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE INDEX IF NOT EXISTS idx_vault_items_user_id ON vault_items(user_id);
+    CREATE INDEX IF NOT EXISTS idx_recipients_user_id ON recipients(user_id);
+    CREATE INDEX IF NOT EXISTS idx_delivery_logs_recipient_id ON delivery_logs(recipient_id);
+    CREATE INDEX IF NOT EXISTS idx_delivery_logs_status ON delivery_logs(status);
+    CREATE INDEX IF NOT EXISTS idx_warning_logs_user_id ON warning_logs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_category ON audit_logs(category);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
   `);
 
   // Ensure default user exists (single-user app)
@@ -194,6 +158,7 @@ export function initializeSchema(db) {
     `).run();
   }
 
-  // Run all versioned migrations (idempotent — skips already-applied versions)
+  // Apply any outstanding migrations (idempotent — skips already-applied versions)
   runMigrations(db);
 }
+
