@@ -1,5 +1,5 @@
 # Stage 1: Install all deps & build frontend
-FROM node:20-alpine AS build
+FROM node:26.7.0-alpine AS build
 WORKDIR /app
 
 # Install backend deps (includes vite for build)
@@ -18,7 +18,7 @@ COPY backend/src/ ./backend/src/
 RUN cd frontend && npx vite build
 
 # Stage 2: Production (lean image)
-FROM node:20-alpine AS production
+FROM node:26.7.0-alpine AS production
 WORKDIR /app
 
 # Create a dedicated non-root user to run the application
