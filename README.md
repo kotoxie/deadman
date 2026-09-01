@@ -21,8 +21,6 @@ A **Dead Man's Switch** is a mechanism that activates when you *stop* doing some
 
 Think of it as a digital will for your online life: your family gets the crypto wallet, your business partner gets the server credentials, your lawyer gets the private documents — all encrypted until the moment it matters.
 
-> ⚠️ **Disclaimer:** Built with AI assistance (Claude) as a functional proof of concept. Security best practices are applied, but no formal audit has been conducted. Use at your own risk for mission-critical data. Always maintain offline backups.
-
 ---
 
 ## ✨ Features
@@ -130,33 +128,6 @@ docker compose up -d
 ```
 
 Open **https://localhost:6680** — accept the self-signed certificate warning.
-
-</details>
-
----
-
-### Option C — Local Development
-
-<details>
-<summary>Click to expand local dev instructions</summary>
-
-**Prerequisites:** Node.js 20+, npm
-
-```bash
-git clone https://github.com/kotoxie/deadman.git deadman-switch
-cd deadman-switch
-
-cd backend && npm install && cd ..
-cd frontend && npm install && cd ..
-
-cp .env.example .env
-
-cd backend && node src/index.js
-```
-
-Open **https://localhost:6680** — accept the self-signed certificate warning on first run.
-
-The server runs the Express API and serves the frontend on a single HTTPS port.
 
 </details>
 
