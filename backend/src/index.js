@@ -36,7 +36,7 @@ async function main() {
   await initDatabase();
 
   // Load TLS credentials (auto-generates self-signed cert on first run)
-  const tlsCredentials = loadTlsCredentials(config.dataDir);
+  const tlsCredentials = await loadTlsCredentials(config.dataDir);
 
   // Initialize delivery services
   try { initializeEmailService(); } catch (e) { logger.debug('Email service not configured:', e.message); }
@@ -149,13 +149,13 @@ async function main() {
   app.use('/api/audit-logs', requireAuth, apiLimiter, auditLogRoutes);
 
   // 404 for unknown API routes
-  app.all('/api/*', (req, res) => res.status(404).json({ error: 'Not found' }));
+  app.all('/api/*splat', (req, res) => res.status(404).json({ error: 'Not found' }));
 
   // ─── Frontend serving (pre-built static files) ──────────────
   const publicDir = path.join(__dirname, '../public');
   if (fs.existsSync(publicDir)) {
     app.use(express.static(publicDir));
-    app.get('*', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+    app.get('*splat', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
   } else {
     logger.warn('No public/ directory found — run "npm run build" first');
   }

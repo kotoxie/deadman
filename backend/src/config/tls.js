@@ -30,7 +30,7 @@ function certExpiresSoon(certPem) {
   }
 }
 
-function generateSelfSigned(tlsDir) {
+async function generateSelfSigned(tlsDir) {
   fs.mkdirSync(tlsDir, { recursive: true });
 
   const attrs = [
@@ -39,14 +39,14 @@ function generateSelfSigned(tlsDir) {
   ];
   const opts = {
     keySize: 2048,
-    days: CERT_VALIDITY_DAYS,
+    notAfterDate: new Date(Date.now() + CERT_VALIDITY_DAYS * 24 * 60 * 60 * 1000),
     algorithm: 'sha256',
     extensions: [
       { name: 'subjectAltName', altNames: [{ type: 2, value: 'localhost' }, { type: 7, ip: '127.0.0.1' }] },
     ],
   };
 
-  const pems = selfsigned.generate(attrs, opts);
+  const pems = await selfsigned.generate(attrs, opts);
   const certPath = path.join(tlsDir, 'cert.pem');
   const keyPath  = path.join(tlsDir, 'key.pem');
 
@@ -57,7 +57,7 @@ function generateSelfSigned(tlsDir) {
   return { cert: pems.cert, key: pems.private };
 }
 
-export function loadTlsCredentials(dataDir) {
+export async function loadTlsCredentials(dataDir) {
   const customCert = process.env.TLS_CERT_PATH;
   const customKey  = process.env.TLS_KEY_PATH;
 
@@ -91,5 +91,5 @@ export function loadTlsCredentials(dataDir) {
     logger.warn('TLS certificate expiring soon — regenerating');
   }
 
-  return generateSelfSigned(tlsDir);
+  return await generateSelfSigned(tlsDir);
 }
