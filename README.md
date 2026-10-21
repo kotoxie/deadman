@@ -144,19 +144,10 @@ Open **https://localhost:6680** — accept the self-signed certificate warning.
 | `TLS_CERT_PATH` | No | — | Path to a custom TLS certificate (PEM). If omitted, a self-signed cert is auto-generated in `DATA_DIR/tls/`. |
 | `TLS_KEY_PATH` | No | — | Path to the private key matching `TLS_CERT_PATH`. |
 | `LOG_LEVEL` | No | `info` | `error`, `warn`, `info`, or `debug` |
-| `SMTP_HOST` | No | — | SMTP hostname (e.g. `smtp.gmail.com`). Can also be set via Settings UI. |
-| `SMTP_PORT` | No | `587` | SMTP port |
-| `SMTP_USER` | No | — | SMTP username/email |
-| `SMTP_PASS` | No | — | SMTP password or app password |
-| `SMTP_FROM` | No | — | Sender email address |
-| `SMTP_SECURE` | No | `false` | `true` for port 465 (SSL) |
-| `TELEGRAM_BOT_TOKEN` | No | — | Bot token from [@BotFather](https://t.me/BotFather) |
 
 > ℹ️ **No required variables.** Everything has a safe default. For production use, set `DB_ENCRYPTION_KEY` to ensure your key is portable and backed up.
 >
 > 🔐 **TLS is always on.** A self-signed certificate is auto-generated on first start. Browsers will warn — click *Advanced → Proceed* or supply a trusted cert via `TLS_CERT_PATH`/`TLS_KEY_PATH`.
-
-SMTP and Telegram can also be configured from the **Settings UI** — values stored there take precedence and are encrypted in the database.
 
 ---
 
@@ -169,15 +160,18 @@ All routes require authentication (except `/api/auth/*`). Prefix: `/api`
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/auth/login` | Login (rate limited: 10 req/15 min) |
+| `POST` | `/api/auth/login` | Login (IP lockout after repeated failures — default 5 attempts, 4h cool-off; configurable) |
 | `POST` | `/api/auth/logout` | End session |
 | `GET` | `/api/auth/check` | Check auth status |
+| `POST` | `/api/auth/setup` | First-run master password setup (public, only works once) |
 | `POST` | `/api/auth/change-password` | Change master password |
 | `POST` | `/api/auth/skip-password-change` | Skip first-login prompt |
+| `GET` | `/api/version` | App version |
 | `GET` | `/api/dashboard` | Dashboard stats + countdown |
 | `POST` | `/api/checkin` | Check in (resets deadline) |
 | `POST` | `/api/checkin/panic` | Immediate delivery (`X-Confirm: DELIVER` header required) |
 | `POST` | `/api/checkin/pause` | Toggle pause/resume |
+| `POST` | `/api/checkin/test-warning` | Send a test warning notification |
 | `GET` | `/api/vault` | List vault items (metadata only) |
 | `POST` | `/api/vault` | Create vault item |
 | `GET` | `/api/vault/:id` | Get decrypted item |
@@ -190,11 +184,13 @@ All routes require authentication (except `/api/auth/*`). Prefix: `/api`
 | `DELETE` | `/api/recipients/:id` | Delete recipient |
 | `POST` | `/api/recipients/:id/assign` | Assign vault items |
 | `POST` | `/api/recipients/:id/test` | Send test delivery |
+| `GET` | `/api/recipients/:id/preview` | Preview what a recipient will receive |
+| `POST` | `/api/recipients/:id/preview/send` | Send the preview to the recipient |
 | `GET` | `/api/delivery-logs` | Delivery log (filterable) |
 | `POST` | `/api/delivery-logs/:id/retry` | Retry failed delivery |
 | `GET` | `/api/audit-logs` | Audit log (filter by category/severity) |
-| `GET` | `/api/settings` | Get settings |
-| `PUT` | `/api/settings` | Update settings |
+| `GET` | `/api/settings` | Get settings (SMTP/Telegram, check-in, security) |
+| `PUT` | `/api/settings` | Update settings (SMTP/Telegram are configured only here) |
 | `POST` | `/api/settings/test-email` | Send test email |
 | `POST` | `/api/settings/test-telegram` | Send test Telegram message |
 

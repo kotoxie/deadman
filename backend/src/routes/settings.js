@@ -99,10 +99,10 @@ router.put('/', (req, res) => {
   }
 
   // Re-init services if their settings changed
-  if (settingUpdates.smtp_host || settingUpdates.smtp_pass) {
+  if (Object.keys(settingUpdates).some(k => k.startsWith('smtp_'))) {
     initializeEmailService();
   }
-  if (settingUpdates.telegram_bot_token) {
+  if ('telegram_bot_token' in settingUpdates) {
     initializeTelegram();
   }
   if ('trust_proxy' in settingUpdates) {
