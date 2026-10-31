@@ -19,7 +19,7 @@
     "helmet": "^8.0.0",
     "multer": "^2.5.0",
     "node-cron": "^4.2.1",
-    "nodemailer": "^10.0.9",
+    "nodemailer": "^10.1.4",
     "selfsigned": "^5.5.0",
     "sql.js": "^1.12.0",
     "tailwindcss": "^4.0.0",
